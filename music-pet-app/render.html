@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>render harness</title>
+  <link rel="stylesheet" href="./styles.css">
+  <style>
+    /* Strip the simulator chrome so we screenshot only the phone screen. */
+    html, body { margin: 0; background: #fff; }
+    .preview-page { padding: 0 !important; display: block !important; }
+    .device-controls, .side-buttons, .dynamic-island { display: none !important; }
+    .iphone-shell { transform: none !important; filter: none !important; }
+    .iphone-body { padding: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; width: var(--screen-w) !important; height: var(--screen-h) !important; }
+    .app-container { border-radius: 0 !important; }
+    body.full .app-container, body.full .screen { height: auto !important; overflow: visible !important; }
+    body.full .ai-work-content { position: static !important; height: auto !important; overflow: visible !important; }
+  </style>
+</head>
+<body>
+  <main class="preview-page">
+    <aside class="device-controls">
+      <div class="device-buttons">
+        <button class="device-btn active" data-device="iphone16" type="button">iPhone 16</button>
+      </div>
+      <div class="control-buttons">
+        <button class="control-btn" data-action="rotate" type="button">Rotate</button>
+        <button class="control-btn" data-action="reset" type="button">Reset</button>
+      </div>
+      <input id="brightness" class="slider" type="range" min="30" max="100" value="100">
+      <span id="brightnessValue"></span>
+      <input id="zoom" class="slider" type="range" min="50" max="150" value="100">
+      <span id="zoomValue"></span>
+      <span id="deviceName"></span><span id="deviceSize"></span><span id="deviceMode"></span>
+    </aside>
+    <section class="iphone-shell">
+      <div class="iphone-body">
+        <div class="dynamic-island"></div>
+        <section class="app-container">
+          <main class="screen" id="screen"></main>
+        </section>
+      </div>
+      <div class="side-buttons left"><i class="btn-mute"></i><i class="btn-vol-up"></i><i class="btn-vol-down"></i></div>
+      <div class="side-buttons right"><i class="btn-power"></i></div>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+  <script>
+    if (location.search.includes("full")) document.body.classList.add("full");
+    if (location.search.includes("bottom")) {
+      setTimeout(() => {
+        const c = document.querySelector(".ai-work-content");
+        if (c) c.scrollTop = c.scrollHeight;
+      }, 350);
+    }
+  </script>
+</body>
+</html>

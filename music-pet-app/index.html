@@ -3,48 +3,62 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>APP-音乐宠物</title>
+  <title>Weekendgo App Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23461c3a'/%3E%3Cpath d='M18 16l30 8-9 27-23-6z' fill='white'/%3E%3Ccircle cx='37' cy='27' r='5' fill='%23f4758c'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="stage">
-    <section class="phone" aria-live="polite">
-      <div class="status-bar">
-        <span>9:41</span>
-        <span class="dynamic-island"></span>
-        <span class="status-icons" aria-hidden="true">
-          <i class="signal"></i>
-          <i class="wifi"></i>
-          <i class="battery"></i>
-        </span>
+  <main class="preview-page">
+    <aside class="device-controls" aria-label="Device simulator controls">
+      <section class="control-section">
+        <strong>Device</strong>
+        <div class="device-buttons">
+          <button class="device-btn" data-device="iphone14" type="button">iPhone 14</button>
+          <button class="device-btn" data-device="iphone15" type="button">iPhone 15</button>
+          <button class="device-btn active" data-device="iphone16" type="button">iPhone 16</button>
+          <button class="device-btn" data-device="iphone16pro" type="button">iPhone 16 Pro</button>
+        </div>
+      </section>
+
+      <section class="control-section">
+        <label for="brightness">Brightness <span id="brightnessValue">100%</span></label>
+        <input id="brightness" class="slider" type="range" min="30" max="100" value="100">
+      </section>
+
+      <section class="control-section">
+        <label for="zoom">Zoom <span id="zoomValue">100%</span></label>
+        <input id="zoom" class="slider" type="range" min="50" max="150" step="10" value="100">
+      </section>
+
+      <section class="control-section">
+        <div class="control-buttons">
+          <button class="control-btn" data-action="rotate" type="button">Rotate</button>
+          <button class="control-btn" data-action="reset" type="button">Reset</button>
+        </div>
+      </section>
+
+      <section class="device-info">
+        <p><strong>Current:</strong> <span id="deviceName">iPhone 16</span></p>
+        <p><strong>Size:</strong> <span id="deviceSize">393 x 852</span></p>
+        <p><strong>Mode:</strong> <span id="deviceMode">Portrait</span></p>
+      </section>
+    </aside>
+
+    <section class="iphone-shell" aria-label="Weekendgo phone simulator">
+      <div class="iphone-body">
+        <div class="dynamic-island" aria-hidden="true"></div>
+        <section class="app-container">
+          <main class="screen" id="screen" aria-live="polite"></main>
+        </section>
       </div>
-
-      <header class="top-bar" id="topBar"></header>
-      <section class="screen" id="screen"></section>
-
-      <nav class="tab-bar" aria-label="主导航">
-        <button class="tab-button" data-route="home" type="button">
-          <i class="tab-icon home-icon"></i>
-          <span>首页</span>
-        </button>
-        <button class="tab-button" data-route="video" type="button">
-          <i class="tab-icon video-icon"></i>
-          <span>视频</span>
-        </button>
-        <button class="tab-button center-tab" data-route="camera" type="button" aria-label="拍照推荐">
-          <i class="note-icon"></i>
-        </button>
-        <button class="tab-button" data-route="diary-list" type="button">
-          <i class="tab-icon diary-icon"></i>
-          <span>日记</span>
-        </button>
-        <button class="tab-button" data-route="profile" type="button">
-          <i class="tab-icon profile-icon"></i>
-          <span>我的</span>
-        </button>
-      </nav>
-
-      <i class="home-indicator" aria-hidden="true"></i>
+      <div class="side-buttons left" aria-hidden="true">
+        <i class="btn-mute"></i>
+        <i class="btn-vol-up"></i>
+        <i class="btn-vol-down"></i>
+      </div>
+      <div class="side-buttons right" aria-hidden="true">
+        <i class="btn-power"></i>
+      </div>
     </section>
   </main>
 
