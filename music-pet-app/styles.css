@@ -2697,6 +2697,403 @@ input:focus-visible {
   line-height: 28px;
 }
 
+/* ============ 我的专属陪伴 · 宠物皮肤 ============ */
+
+.petskin-page {
+  position: relative;
+  width: 393px;
+  min-height: 1140px;
+  margin: 0 auto;
+  background: #f6f9f7;
+}
+
+.ps-card {
+  position: absolute;
+  left: 19px;
+  top: 120px;
+  width: 353px;
+  height: 175px;
+  border-radius: 16.6px;
+  background: #fff;
+  box-shadow: 0 4.6px 16.6px rgba(13, 20, 20, 0.07);
+}
+
+.ps-pet {
+  position: absolute;
+  left: 214px;
+  top: 125px;
+  width: 135px;
+  height: 170px;
+  object-fit: contain;
+}
+
+.ps-name {
+  position: absolute;
+  left: 39px;
+  top: 147px;
+  color: #000;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 31px;
+}
+
+.ps-switch {
+  position: absolute;
+  left: 118px;
+  top: 152px;
+  width: 57px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 41px;
+  background: #f3f3f3;
+  color: #636363;
+  font-size: 11px;
+}
+
+.ps-intimacy,
+.ps-intimacy-val,
+.ps-improve {
+  position: absolute;
+  top: 180px;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.ps-intimacy { left: 39px; color: #000; }
+.ps-intimacy-val { left: 86px; color: #636363; }
+.ps-improve { left: 132px; top: 181px; color: #636363; }
+
+.ps-divider {
+  position: absolute;
+  left: 39px;
+  top: 207px;
+  width: 136px;
+  height: 1px;
+  background: #e6e6e6;
+}
+
+.ps-desc1,
+.ps-desc2 {
+  position: absolute;
+  left: 39px;
+  margin: 0;
+  color: #646464;
+  font-size: 8px;
+  line-height: 12px;
+}
+
+.ps-desc1 { top: 221px; }
+.ps-desc2 { top: 251px; }
+
+.ps-task-title {
+  position: absolute;
+  left: 18px;
+  top: 315px;
+  margin: 0;
+  color: #000;
+  font-size: 17.8px;
+  line-height: 24px;
+}
+
+.ps-task-sub {
+  position: absolute;
+  left: 19px;
+  top: 340px;
+  color: #636363;
+  font-size: 11px;
+  letter-spacing: 0.55px;
+}
+
+.ps-task-link {
+  position: absolute;
+  left: 305px;
+  top: 318px;
+  color: #636363;
+  font-size: 11.5px;
+}
+
+.ps-tab {
+  position: absolute;
+  top: 379px;
+  width: 90px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 65px;
+  font-size: 15.4px;
+  cursor: pointer;
+}
+
+.ps-tab.left { left: 19px; }
+.ps-tab.right { left: 118px; }
+
+.ps-tab.on {
+  background: #0acc61;
+  color: #fff;
+}
+
+.ps-tab.off {
+  background: rgba(10, 204, 97, 0.02);
+  border: 1px solid #0acc61;
+  color: #000;
+}
+
+/* ---- 动作 tab ---- */
+.petskin-page.is-action { min-height: 1280px; }
+
+.ps-act-ld {
+  position: absolute;
+  left: 16px;
+  top: 419px;
+  width: 41px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.ps-act-line {
+  position: absolute;
+  left: 50%;
+  top: 451px;
+  width: 317px;
+  height: 1px;
+  transform: translateX(-50%);
+  background: #d8d8d8;
+}
+
+.ps-act-ms {
+  position: absolute;
+  top: 452px;
+  transform: translateX(-50%);
+  color: #000;
+  font-size: 10px;
+}
+
+.ps-act-card {
+  position: absolute;
+  width: 82px;
+  height: 82px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(13, 20, 20, 0.05);
+}
+
+.ps-act-divider {
+  position: absolute;
+  left: 43px;
+  width: 1px;
+  height: 83px;
+  background: #e2e2e2;
+}
+
+.ps-tier-name,
+.ps-tier-num {
+  position: absolute;
+  left: 43.5px;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ps-tier-name { color: #000; font-size: 15.4px; line-height: 20px; }
+.ps-tier-num { color: #656565; font-size: 15.4px; line-height: 20px; }
+
+.ps-act-img {
+  position: absolute;
+  object-fit: contain;
+}
+
+.ps-act-name {
+  position: absolute;
+  transform: translateX(-50%);
+  color: #656565;
+  font-size: 13.9px;
+  line-height: 18.6px;
+  white-space: nowrap;
+}
+
+.petskin-page .ps-more-act { top: 1056px; }
+
+.ps-group {
+  position: absolute;
+  left: 29px;
+  color: #000;
+  font-size: 10px;
+}
+
+.ps-group.g1 { top: 414px; }
+.ps-group.g2 { top: 801px; }
+
+.ps-skin {
+  position: absolute;
+  width: 70px;
+  height: 84px;
+}
+
+.ps-skin img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.ps-skin-name {
+  position: absolute;
+  color: #000;
+  font-size: 10px;
+  line-height: 11px;
+}
+
+.ps-more {
+  position: absolute;
+  left: 107px;
+  top: 942px;
+  color: #000;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* ============ 任务 · 每日任务 ============ */
+
+.tasks-page {
+  position: relative;
+  width: 393px;
+  min-height: 720px;
+  margin: 0 auto;
+  background: #f6f9f7;
+}
+
+.tk-pet {
+  position: absolute;
+  left: 21px;
+  top: 114px;
+  width: 109px;
+  height: 138px;
+  object-fit: contain;
+}
+
+.tk-progress-title {
+  position: absolute;
+  left: 143px;
+  top: 141px;
+  color: #102116;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.tk-prog-bg {
+  position: absolute;
+  left: 143px;
+  top: 177px;
+  width: 176px;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(13, 20, 20, 0.05);
+}
+
+.tk-prog-fill {
+  position: absolute;
+  left: 143px;
+  top: 177px;
+  width: 118px;
+  height: 10px;
+  border-radius: 5px;
+  background: #22d66b;
+}
+
+.tk-ratio {
+  position: absolute;
+  left: 325px;
+  top: 172px;
+  width: 34px;
+  text-align: right;
+  color: #12b95b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.tk-reward-note {
+  position: absolute;
+  left: 143px;
+  top: 203px;
+  width: 190px;
+  color: #4c6758;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.tk-section {
+  position: absolute;
+  left: 23px;
+  top: 273px;
+  margin: 0;
+  color: #121518;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.tk-card {
+  position: absolute;
+  left: 23px;
+  width: 342px;
+  height: 74px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+}
+
+.tk-check {
+  position: absolute;
+  left: 43px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dfe5e6;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tk-check.done {
+  background: #22d66b;
+}
+
+.tk-title {
+  position: absolute;
+  left: 87px;
+  color: #121518;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.tk-sub {
+  position: absolute;
+  left: 87px;
+  color: #7a8387;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.tk-pill {
+  position: absolute;
+  left: 265px;
+  width: 78px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
   .preview-page {
     display: grid;

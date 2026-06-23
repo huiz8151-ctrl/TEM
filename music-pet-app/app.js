@@ -15,7 +15,8 @@ const state = {
   zoom: 100,
   rotated: false,
   view: "home",
-  history: []
+  history: [],
+  petTab: "skin"
 };
 
 const PIC = "./picture";
@@ -596,7 +597,7 @@ function renderProfile() {
         <div class="pf-card pf-pet-card"></div>
         <span class="pf-card-title pf-t3">宠物声音和陪伴方式</span>
         <span class="pf-pet-sub">温柔提醒 · 每晚 21:30</span>
-        <button class="pf-setting" type="button">去设置</button>
+        <button class="pf-setting" type="button" data-nav="petskin">去设置</button>
       </div>
     </section>
 
@@ -606,9 +607,152 @@ function renderProfile() {
   `;
 }
 
+/* ---------- 我的专属陪伴 (宠物皮肤/装扮) ---------- */
+
+const SKINS = [
+  ["lan2 2.png", 45, 436, "星屿", 69, 523],
+  ["绿色 2.png", 161, 436, "月庭", 186, 522],
+  ["粉丝 2.png", 277, 436, "心跳", 301, 522],
+  ["肉色 2.png", 45, 557, "花信", 68, 644],
+  ["褐色 2.png", 161, 557, "甜烘", 184, 644],
+  ["紫色 2.png", 277, 557, "星夜", 299, 644],
+  ["柠檬夏 2.png", 45, 682, "果境", 68, 771],
+  ["蓝色 2.png", 161, 682, "云汐", 184, 771],
+  ["黄色 2.png", 278, 682, "日冕", 300, 771],
+  ["6 1.png", 17, 830, "夜冕", 47, 910],
+  ["1 2.png", 113, 830, "梦羽", 139, 910],
+  ["4 2.png", 203, 830, "虹翼", 230, 910],
+  ["2 2.png", 301, 830, "樱庭", 321, 910]
+];
+
+const ACTIONS = [
+  ["act1.png", 87, 516, 69, 72, "打招呼", 122, 602],
+  ["act2.png", 188, 515, 69, 71, "点头晃晃", 223, 602],
+  ["act3.png", 291, 515, 69, 72, "我来了", 326, 602],
+  ["act4.png", 94, 656, 68, 64, "跟拍摇摆", 122, 737],
+  ["act5.png", 187, 647, 74, 78, "开心转圈", 223, 737],
+  ["act6.png", 291, 646, 75, 79, "抱抱", 326, 737],
+  ["act7.png", 85, 787, 75, 79, "送你心心", 122, 874],
+  ["act8.png", 182, 781, 83, 87, "安静听歌", 223, 874],
+  ["act9.png", 291, 785, 75, 79, "偷偷看你", 326, 874],
+  ["act10.png", 91, 925, 66, 62, "元气满满", 122, 1019],
+  ["act11.png", 184, 911, 82, 85, "结束动作", 223, 1019],
+  ["act12.png", 288, 922, 74, 65, "摆烂躺平", 326, 1019]
+];
+const ACT_TIERS = [["初识", "0", 511, 530], ["星契", "500", 646, 665], ["灵弦", "2000", 781, 800], ["心耀", "5000", 916, 935]];
+const ACT_MILESTONES = [["初识", 42.5], ["星契", 143], ["灵弦", 243.5], ["心耀", 344]];
+
+function renderSkinsBlock() {
+  return `
+    <span class="ps-group g1">基础款 ⌄</span>
+    <span class="ps-group g2">特殊款 ⌄</span>
+    ${SKINS.map(([src, l, t, name, nl, nt]) =>
+      `<div class="ps-skin" style="left:${l}px;top:${t}px"><img src="${PIC}/${src}" alt=""></div>` +
+      `<span class="ps-skin-name" style="left:${nl}px;top:${nt}px">${name}</span>`
+    ).join("")}
+    <span class="ps-more">——更多装扮，正在上线中——</span>
+  `;
+}
+
+function renderActionsBlock() {
+  let cards = "";
+  for (const t of [511, 645, 781, 916]) for (const l of [83, 182, 284]) cards += `<div class="ps-act-card" style="left:${l}px;top:${t}px"></div>`;
+  return `
+    <img class="ps-act-ld" src="${PIC}/act-ld.png" alt="">
+    <div class="ps-act-line"></div>
+    ${ACT_MILESTONES.map(([n, l]) => `<span class="ps-act-ms" style="left:${l}px">${n}</span>`).join("")}
+    ${cards}
+    ${[557, 692, 827].map((t) => `<i class="ps-act-divider" style="top:${t}px"></i>`).join("")}
+    ${ACT_TIERS.map(([n, num, nt, vt]) => `<span class="ps-tier-name" style="top:${nt}px">${n}</span><span class="ps-tier-num" style="top:${vt}px">${num}</span>`).join("")}
+    ${ACTIONS.map(([src, il, it, iw, ih, name, nl, nt]) =>
+      `<img class="ps-act-img" src="${PIC}/${src}" style="left:${il}px;top:${it}px;width:${iw}px;height:${ih}px" alt="">` +
+      `<span class="ps-act-name" style="left:${nl}px;top:${nt}px">${name}</span>`
+    ).join("")}
+    <span class="ps-more ps-more-act">——更多动作，正在上线中——</span>
+  `;
+}
+
+function renderPetskin() {
+  const isAction = state.petTab === "action";
+  return `
+    <section class="ai-work-content" aria-label="我的专属陪伴">
+      <div class="petskin-page${isAction ? " is-action" : ""}" data-node-id="406:87">
+        <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
+        <h1 class="results-title">我的专属陪伴</h1>
+
+        <div class="ps-card"></div>
+        <img class="ps-pet" src="${PIC}/zhu 1.png" alt="音乐宠物">
+        <span class="ps-name">小玲团</span>
+        <span class="ps-switch">切换角色</span>
+        <span class="ps-intimacy">亲密度:</span>
+        <span class="ps-intimacy-val">0/500</span>
+        <span class="ps-improve">去提升 〉</span>
+        <div class="ps-divider"></div>
+        <p class="ps-desc1">小铃团会根据你听歌行为变化状态<br>不同耳机搭配不同性格表现</p>
+        <p class="ps-desc2">解锁「装扮」和「动作」<br>打造你的专属音乐陪伴角色</p>
+
+        <h2 class="ps-task-title">做任务解锁装扮/动作</h2>
+        <span class="ps-task-sub">已解锁25/25,点击即可以预览</span>
+        <span class="ps-task-link" data-nav="tasks">去做任务 〉</span>
+
+        <span class="ps-tab left ${isAction ? "off" : "on"}" data-pettab="skin">装扮</span>
+        <span class="ps-tab right ${isAction ? "on" : "off"}" data-pettab="action">动作</span>
+
+        ${isAction ? renderActionsBlock() : renderSkinsBlock()}
+      </div>
+    </section>
+
+    ${statusBar()}
+    ${miniPlayer()}
+    ${bottomNav("profile")}
+  `;
+}
+
+/* ---------- 任务 (每日任务) ---------- */
+
+const TASKS = [
+  [true, "听完 3 首推荐歌", "让小Q获得音乐能量", "能量 +20", "#53b7ff"],
+  [true, "和小Q聊天 1 次", "提升亲密度", "亲密 +12", "#22d66b"],
+  [true, "写一篇音乐日记", "沉淀今日心情", "经验 +18", "#ffb84d"],
+  [false, "分享音乐瞬间", "获得装扮碎片", "碎片 +1", "#a68bff"]
+];
+
+function renderTasks() {
+  return `
+    <section class="ai-work-content" aria-label="任务">
+      <div class="tasks-page" data-node-id="446:326">
+        <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
+        <h1 class="results-title">任务</h1>
+
+        <img class="tk-pet" src="${PIC}/zhu 1.png" alt="音乐宠物">
+        <span class="tk-progress-title">今日照顾进度</span>
+        <div class="tk-prog-bg"></div>
+        <div class="tk-prog-fill"></div>
+        <span class="tk-ratio">3 / 5</span>
+        <span class="tk-reward-note">完成全部任务可获得：绿音铃铛碎片 ×2</span>
+        <h2 class="tk-section">每日任务</h2>
+
+        ${TASKS.map(([done, title, sub, reward, color], i) => {
+          const t = 311 + i * 86;
+          return `
+        <div class="tk-card" style="top:${t}px"></div>
+        <span class="tk-check${done ? " done" : ""}" style="top:${t + 22}px">${done ? "✓" : ""}</span>
+        <span class="tk-title" style="top:${t + 16}px">${title}</span>
+        <span class="tk-sub" style="top:${t + 40}px">${sub}</span>
+        <span class="tk-pill" style="top:${t + 23}px;background:${color}">${reward}</span>`;
+        }).join("")}
+      </div>
+    </section>
+
+    ${statusBar()}
+    ${miniPlayer()}
+    ${bottomNav("")}
+  `;
+}
+
 /* ---------- Router ---------- */
 
-const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile };
+const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile, petskin: renderPetskin, tasks: renderTasks };
 
 let analyzeTimer;
 
@@ -648,6 +792,15 @@ function applyDevice() {
 }
 
 document.addEventListener("click", (event) => {
+  const petTabEl = event.target.closest("[data-pettab]");
+  if (petTabEl && screen.contains(petTabEl)) {
+    if (state.petTab !== petTabEl.dataset.pettab) {
+      state.petTab = petTabEl.dataset.pettab;
+      renderView();
+    }
+    return;
+  }
+
   const navEl = event.target.closest("[data-nav]");
   if (navEl && screen.contains(navEl)) {
     let next = navEl.dataset.nav;
