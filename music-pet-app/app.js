@@ -16,7 +16,12 @@ const state = {
   rotated: false,
   view: "home",
   history: [],
-  petTab: "skin"
+  petTab: "skin",
+  navDir: "forward",
+  player: { playing: true, progress: 0.16, dur: 231 },
+  taskDone: [true, true, true, false],
+  taskTotal: 5,
+  diaryPublic: true
 };
 
 const PIC = "./picture";
@@ -98,7 +103,7 @@ function renderHome() {
         <div class="ai-search-row">
           <label class="ai-search">
             <img src="${PIC}/搜索 1.svg" alt="">
-            <span>搜索歌曲 / 歌手 / 歌单</span>
+            <input class="ai-search-input" type="text" placeholder="搜索歌曲 / 歌手 / 歌单">
           </label>
           <img class="ai-sound" src="${PIC}/disc.svg" alt="">
         </div>
@@ -143,17 +148,17 @@ function renderHome() {
           </header>
 
           <div class="ai-playlists">
-            <button class="playlist-card morning" type="button">
+            <button class="playlist-card morning" type="button" data-toast="歌单功能即将上线 🎵">
               <span></span><strong>清晨 · 元气</strong><em>32 首</em><b>▶</b>
             </button>
-            <button class="playlist-card relax" type="button">
+            <button class="playlist-card relax" type="button" data-toast="歌单功能即将上线 🎵">
               <span></span><strong>放松 · 治愈</strong><em>28 首</em><b>▶</b>
             </button>
-            <button class="playlist-card rain" type="button">
+            <button class="playlist-card rain" type="button" data-toast="歌单功能即将上线 🎵">
               <span></span><strong>雨天 · 安静</strong><em>30 首</em><b>▶</b>
             </button>
           </div>
-          <button class="ai-more-note" type="button">更多 〉</button>
+          <button class="ai-more-note" type="button" data-toast="更多内容即将上线">更多 〉</button>
         </section>
       </div>
     </section>
@@ -177,14 +182,15 @@ function renderScene() {
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#0a0e0e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <h1>场景选择</h1>
-          <button class="scene-more" type="button" aria-label="更多">
+          <button class="scene-more" type="button" aria-label="更多" data-toast="更多选项开发中">
             <i></i><i></i><i></i>
           </button>
         </header>
 
         <div class="scene-prompt">
           <img class="scene-prompt-spark" src="${PIC}/Group 145.svg" alt="">
-          <span>我在跑步，想把今天的情绪全部跑掉</span>
+          <input class="scene-prompt-input" type="text" value="我在跑步，想把今天的情绪全部跑掉" placeholder="说说此刻的状态…">
+
           <button class="scene-prompt-cam" type="button" aria-label="拍照">
             <svg viewBox="0 0 26 24" width="26" height="24" aria-hidden="true">
               <rect x="1.2" y="5" width="23.6" height="17" rx="4" fill="none" stroke="#0a0e0e" stroke-width="1.7"/>
@@ -289,11 +295,11 @@ function renderResults() {
       <div class="results-page" data-node-id="365:9389">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">歌曲推荐</h1>
-        <button class="results-more" type="button" aria-label="更多">...</button>
+        <button class="results-more" type="button" aria-label="更多" data-toast="更多功能开发中">...</button>
 
         <div class="results-photo">
           <div class="results-photo-img" style="background-image:url('${PIC}/Photo/City haze.png')"></div>
-          <div class="results-mood-input"><span>写点此刻心情</span></div>
+          <div class="results-mood-input"><input class="results-mood-field" type="text" placeholder="写点此刻心情"></div>
           <button class="results-edit" type="button" aria-label="编辑">
             <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 16.5V20h3.5L18 9.5 14.5 6 4 16.5zM20.7 6.3a1 1 0 0 0 0-1.4l-1.6-1.6a1 1 0 0 0-1.4 0L16 5l3.5 3.5 1.2-1.2z" fill="#2a2a2a"/></svg>
           </button>
@@ -352,7 +358,7 @@ function eqBars() {
   const step = 7.485;
   const right = 369.6;
   return EQ_WIDTHS.map((w, i) =>
-    `<i class="eqbar${i === 7 ? " on" : ""}" style="top:${(top0 + i * step).toFixed(2)}px;left:${(right - w).toFixed(2)}px;width:${w}px"></i>`
+    `<i class="eqbar${i === 7 ? " on" : ""}" style="top:${(top0 + i * step).toFixed(2)}px;left:${(right - w).toFixed(2)}px;width:${w}px;animation-delay:${(Math.abs(i - 7) * 0.07).toFixed(2)}s"></i>`
   ).join("");
 }
 
@@ -382,7 +388,7 @@ function renderRecwheel() {
         <img class="rec-status" src="${PIC}/Status Bar.svg" alt="">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">为你推荐</h1>
-        <button class="results-more" type="button" aria-label="更多">...</button>
+        <button class="results-more" type="button" aria-label="更多" data-toast="更多功能开发中">...</button>
         <div class="rec-home" aria-hidden="true"></div>
       </div>
     </section>
@@ -444,7 +450,7 @@ function renderPlayer() {
         ${statusBar()}
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">在线听</h1>
-        <button class="results-more" type="button" aria-label="更多">...</button>
+        <button class="results-more" type="button" aria-label="更多" data-toast="更多功能开发中">...</button>
       </div>
     </section>
 
@@ -467,7 +473,7 @@ function renderDiary() {
           <img src="${PIC}/Photo/City haze.png" alt="">
           <span class="composer-close">×</span>
         </div>
-        <div class="composer-textarea"><span>记录此刻的心情...</span></div>
+        <div class="composer-textarea"><textarea class="composer-input" placeholder="记录此刻的心情..."></textarea></div>
         <div class="composer-songchip">
           <span class="cs-cover"></span>
           <strong class="cs-title">慢慢喜欢你</strong>
@@ -480,11 +486,11 @@ function renderDiary() {
         <span class="ctag-add">+</span>
         <div class="composer-divider"></div>
         <span class="composer-publabel">公开设置</span>
-        <span class="toggle-private">
-          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="#6b7375" stroke-width="2"/><rect x="5" y="10" width="14" height="10" rx="2" fill="#6b7375"/></svg>
+        <span class="diary-toggle toggle-private${state.diaryPublic ? "" : " active"}" data-toggle="private">
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="10" width="14" height="10" rx="2" fill="currentColor"/></svg>
           私人
         </span>
-        <span class="toggle-public">●&nbsp;&nbsp;公开</span>
+        <span class="diary-toggle toggle-public${state.diaryPublic ? " active" : ""}" data-toggle="public">●&nbsp;&nbsp;公开</span>
 
         <span class="diary-tab tab1">公开日记</span>
         <span class="diary-tab tab2 active">推荐</span>
@@ -683,10 +689,10 @@ function renderPetskin() {
         <div class="ps-card"></div>
         <img class="ps-pet" src="${PIC}/zhu 1.png" alt="音乐宠物">
         <span class="ps-name">小玲团</span>
-        <span class="ps-switch">切换角色</span>
+        <span class="ps-switch" data-toast="切换角色，敬请期待">切换角色</span>
         <span class="ps-intimacy">亲密度:</span>
         <span class="ps-intimacy-val">0/500</span>
-        <span class="ps-improve">去提升 〉</span>
+        <span class="ps-improve" data-toast="亲密度提升玩法开发中">去提升 〉</span>
         <div class="ps-divider"></div>
         <p class="ps-desc1">小铃团会根据你听歌行为变化状态<br>不同耳机搭配不同性格表现</p>
         <p class="ps-desc2">解锁「装扮」和「动作」<br>打造你的专属音乐陪伴角色</p>
@@ -717,6 +723,10 @@ const TASKS = [
   [false, "分享音乐瞬间", "获得装扮碎片", "碎片 +1", "#a68bff"]
 ];
 
+function taskDoneCount() {
+  return state.taskDone.filter(Boolean).length;
+}
+
 function renderTasks() {
   return `
     <section class="ai-work-content" aria-label="任务">
@@ -727,19 +737,20 @@ function renderTasks() {
         <img class="tk-pet" src="${PIC}/zhu 1.png" alt="音乐宠物">
         <span class="tk-progress-title">今日照顾进度</span>
         <div class="tk-prog-bg"></div>
-        <div class="tk-prog-fill"></div>
-        <span class="tk-ratio">3 / 5</span>
+        <div class="tk-prog-fill" style="width:${(taskDoneCount() / state.taskTotal * 176).toFixed(1)}px"></div>
+        <span class="tk-ratio">${taskDoneCount()} / ${state.taskTotal}</span>
         <span class="tk-reward-note">完成全部任务可获得：绿音铃铛碎片 ×2</span>
         <h2 class="tk-section">每日任务</h2>
 
-        ${TASKS.map(([done, title, sub, reward, color], i) => {
+        ${TASKS.map(([_, title, sub, reward, color], i) => {
           const t = 311 + i * 86;
+          const done = state.taskDone[i];
           return `
-        <div class="tk-card" style="top:${t}px"></div>
-        <span class="tk-check${done ? " done" : ""}" style="top:${t + 22}px">${done ? "✓" : ""}</span>
-        <span class="tk-title" style="top:${t + 16}px">${title}</span>
-        <span class="tk-sub" style="top:${t + 40}px">${sub}</span>
-        <span class="tk-pill" style="top:${t + 23}px;background:${color}">${reward}</span>`;
+        <div class="tk-card${done ? "" : " is-todo"}" style="top:${t}px" data-task="${i}"></div>
+        <span class="tk-check${done ? " done" : ""}" style="top:${t + 22}px" data-task="${i}">${done ? "✓" : ""}</span>
+        <span class="tk-title" style="top:${t + 16}px" data-task="${i}">${title}</span>
+        <span class="tk-sub" style="top:${t + 40}px" data-task="${i}">${sub}</span>
+        <span class="tk-pill" style="top:${t + 23}px;background:${color}" data-task="${i}">${reward}</span>`;
         }).join("")}
       </div>
     </section>
@@ -756,16 +767,118 @@ const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, re
 
 let analyzeTimer;
 
+const ENTER_CLASS = { forward: "view-enter-forward", back: "view-enter-back", fade: "view-enter-fade" };
+
+/* ---------- 模拟播放引擎 ---------- */
+
+let playerTimer;
+
+function fmtTime(sec) {
+  const s = Math.max(0, Math.round(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/* 把当前播放状态画到现有 DOM（迷你播放器跨页都在，播放页仅当前页有） */
+function paintPlayer() {
+  const p = state.player;
+  document.querySelectorAll(".ai-mini-player, .rec-mini").forEach((mp) => mp.classList.toggle("is-playing", p.playing));
+
+  const fill = document.querySelector(".player-track-fill");
+  if (fill) {
+    const w = fill.parentElement.clientWidth;
+    fill.style.width = `${p.progress * w}px`;
+    const knob = document.querySelector(".player-knob");
+    if (knob) knob.style.left = `${p.progress * w}px`;
+    const times = document.querySelectorAll(".player-time span");
+    if (times.length === 2) {
+      const elapsed = p.progress * p.dur;
+      times[0].textContent = fmtTime(elapsed);
+      times[1].textContent = `-${fmtTime(p.dur - elapsed)}`;
+    }
+    const btn = document.querySelector(".player-play");
+    if (btn) btn.classList.toggle("paused", !p.playing);
+  }
+}
+
+/* 进度计时只在播放页运行（离开即清除），避免常驻 DOM 改写干扰截图 */
+function syncPlayerTimer() {
+  clearInterval(playerTimer);
+  if (state.view === "player") {
+    playerTimer = setInterval(() => {
+      if (!state.player.playing) return;
+      state.player.progress += 0.25 / state.player.dur;
+      if (state.player.progress >= 1) state.player.progress = 0;
+      paintPlayer();
+    }, 250);
+  }
+}
+
+function togglePlay() {
+  state.player.playing = !state.player.playing;
+  paintPlayer();
+}
+
+/* ---------- Toast（给“点了没目的页”的入口兜底反馈） ---------- */
+
+let toastTimer;
+
+function toast(msg) {
+  const host = document.querySelector(".app-container") || document.body;
+  let el = host.querySelector(".app-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "app-toast";
+    host.appendChild(el);
+  }
+  el.textContent = msg;
+  void el.offsetWidth;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+}
+
+/* ---------- 滚动入场（卡片随滚动淡入上移；纯增强，JS 缺失不影响可见性） ---------- */
+
+const REVEAL_SELECTOR = ".ps-skin, .ps-act-card, .ps-act-img, .tk-card, .dl-card, .pf-card, .feed-card, .feed-preview, .playlist-card";
+let revealObserver;
+
+function setupReveal(content) {
+  if (revealObserver) revealObserver.disconnect();
+  if (!content || !("IntersectionObserver" in window)) return;
+  const targets = content.querySelectorAll(REVEAL_SELECTOR);
+  if (!targets.length) return;
+  targets.forEach((el, i) => {
+    el.classList.add("reveal");
+    el.style.transitionDelay = `${Math.min(i, 8) * 32}ms`;
+  });
+  revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add("reveal-in");
+        revealObserver.unobserve(e.target);
+      }
+    });
+  }, { root: content, threshold: 0.06 });
+  targets.forEach((el) => revealObserver.observe(el));
+}
+
 function renderView() {
   clearTimeout(analyzeTimer);
   screen.innerHTML = views[state.view]();
   const content = screen.querySelector(".ai-work-content");
-  if (content) content.scrollTop = 0;
+  if (content) {
+    content.scrollTop = 0;
+    content.classList.add(ENTER_CLASS[state.navDir] || ENTER_CLASS.forward);
+  }
+  paintPlayer();
+  syncPlayerTimer();
+  setupReveal(content);
 
   /* AI分析中 → 自动进入歌曲推荐 */
   if (state.view === "analyze") {
     analyzeTimer = setTimeout(() => {
       if (state.view === "analyze") {
+        state.navDir = "forward";
         state.view = "results";
         renderView();
       }
@@ -792,10 +905,88 @@ function applyDevice() {
 }
 
 document.addEventListener("click", (event) => {
+  const petEl = event.target.closest(".ai-pet, .pf-pet, .tk-pet, .ps-pet, .analyze-pet");
+  if (petEl && screen.contains(petEl)) {
+    petEl.classList.remove("pet-react");
+    void petEl.offsetWidth; /* restart the animation */
+    petEl.classList.add("pet-react");
+    petEl.addEventListener("animationend", () => petEl.classList.remove("pet-react"), { once: true });
+    return;
+  }
+
+  /* 迷你播放器上的播放小三角：切换播放，不触发跳转 */
+  if (event.target.closest(".mini-play")) {
+    togglePlay();
+    return;
+  }
+
+  /* 播放页大播放键 */
+  if (event.target.closest(".player-play")) {
+    togglePlay();
+    return;
+  }
+
+  /* 上/下一首：重置进度（占位反馈） */
+  if (event.target.closest(".player-skip")) {
+    state.player.progress = 0;
+    paintPlayer();
+    return;
+  }
+
+  /* 任务卡：点击未完成任务 → 勾选动画 + 进度推进 + 宠物反应 */
+  const taskEl = event.target.closest("[data-task]");
+  if (taskEl && screen.contains(taskEl)) {
+    const i = Number(taskEl.dataset.task);
+    if (!state.taskDone[i]) {
+      state.taskDone[i] = true;
+      const card = screen.querySelector(`.tk-card[data-task="${i}"]`);
+      if (card) card.classList.remove("is-todo");
+      const chk = screen.querySelectorAll(".tk-check")[i];
+      if (chk) {
+        chk.classList.add("done");
+        chk.textContent = "✓";
+        chk.classList.remove("pop");
+        void chk.offsetWidth;
+        chk.classList.add("pop");
+      }
+      const ratio = screen.querySelector(".tk-ratio");
+      if (ratio) ratio.textContent = `${taskDoneCount()} / ${state.taskTotal}`;
+      const fill = screen.querySelector(".tk-prog-fill");
+      if (fill) fill.style.width = `${(taskDoneCount() / state.taskTotal * 176).toFixed(1)}px`;
+      const pet = screen.querySelector(".tk-pet");
+      if (pet) {
+        pet.classList.remove("pet-react");
+        void pet.offsetWidth;
+        pet.classList.add("pet-react");
+        pet.addEventListener("animationend", () => pet.classList.remove("pet-react"), { once: true });
+      }
+      toast("任务完成，小Q更开心了 🎉");
+    }
+    return;
+  }
+
+  /* 日记公开 / 私人开关 */
+  const toggleEl = event.target.closest("[data-toggle]");
+  if (toggleEl && screen.contains(toggleEl)) {
+    state.diaryPublic = toggleEl.dataset.toggle === "public";
+    screen.querySelectorAll(".diary-toggle").forEach((el) => {
+      el.classList.toggle("active", el.dataset.toggle === (state.diaryPublic ? "public" : "private"));
+    });
+    toast(state.diaryPublic ? "已设为公开，将出现在社区" : "已设为私人，仅自己可见");
+    return;
+  }
+
+  const toastEl = event.target.closest("[data-toast]");
+  if (toastEl && screen.contains(toastEl)) {
+    toast(toastEl.dataset.toast);
+    return;
+  }
+
   const petTabEl = event.target.closest("[data-pettab]");
   if (petTabEl && screen.contains(petTabEl)) {
     if (state.petTab !== petTabEl.dataset.pettab) {
       state.petTab = petTabEl.dataset.pettab;
+      state.navDir = "fade";
       renderView();
     }
     return;
@@ -805,9 +996,11 @@ document.addEventListener("click", (event) => {
   if (navEl && screen.contains(navEl)) {
     let next = navEl.dataset.nav;
     if (next === "back") {
+      state.navDir = "back";
       next = state.history.pop() || "home";
     } else {
       if (next === state.view) return;
+      state.navDir = "forward";
       state.history.push(state.view);
     }
     state.view = next;
