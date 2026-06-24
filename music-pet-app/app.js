@@ -116,7 +116,6 @@ function renderHome() {
           <button class="ai-pet-link" type="button" data-nav="profile">
             <strong>音乐宠物 〉</strong>
             <span>陪你发现此刻的好音乐</span>
-            <span>陪你发现此刻的好音乐</span>
           </button>
         </section>
 
@@ -131,9 +130,9 @@ function renderHome() {
 
         <section class="ai-scene-section">
           <header class="ai-section-title ai-scene-title">
-            <h2>为此刻推荐</h2>
+            <h2>场景推荐</h2>
             <button type="button" data-nav="scene">更多 〉</button>
-            <p class="ai-scene-sub">Music for this moment</p>
+            <p class="ai-scene-sub">Find your scene</p>
           </header>
 
           <div class="ai-scene-track">
