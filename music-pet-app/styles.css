@@ -616,7 +616,7 @@ input:focus-visible {
 
 .ai-work-frame {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 1240px;
   margin: 0 auto;
   overflow: hidden;
@@ -639,7 +639,7 @@ input:focus-visible {
   left: 0;
   top: 0;
   z-index: 6;
-  width: 393px;
+  width: var(--screen-w);
   height: 54px;
   background: #f6f9f7;
 }
@@ -657,7 +657,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   top: 0;
-  width: 393px;
+  width: var(--screen-w);
   height: 110px;
 }
 
@@ -703,7 +703,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   top: 141px;
-  width: 393px;
+  width: var(--screen-w);
   height: 210px;
 }
 
@@ -844,7 +844,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   top: 480px;
-  width: 393px;
+  width: var(--screen-w);
   height: 326px;
 }
 
@@ -878,7 +878,7 @@ input:focus-visible {
   top: 64px;
   display: flex;
   gap: 17px;
-  width: 393px;
+  width: var(--screen-w);
   padding: 0 30px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1034,7 +1034,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   top: 840px;
-  width: 393px;
+  width: var(--screen-w);
   height: 224px;
 }
 
@@ -1153,7 +1153,7 @@ input:focus-visible {
   position: absolute;
   left: 0;
   top: 204px;
-  width: 393px;
+  width: var(--screen-w);
   padding: 0;
   color: var(--muted);
   font-size: 13px;
@@ -1165,9 +1165,10 @@ input:focus-visible {
 .ai-mini-player {
   position: absolute;
   left: 19px;
+  right: 19px;
   bottom: 89px;
   z-index: 12;
-  width: 354px;
+  width: auto;
   height: 62px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.95);
@@ -1239,10 +1240,12 @@ input:focus-visible {
 
 .ai-mini-player .mini-menu::before {
   top: -9px;
+  right: 0;
 }
 
 .ai-mini-player .mini-menu::after {
   top: 9px;
+  right: 0;
 }
 
 /* ---- Bottom navigation (fixed overlay) ---- */
@@ -1251,7 +1254,7 @@ input:focus-visible {
   left: 0;
   bottom: 0;
   z-index: 10;
-  width: 393px;
+  width: var(--screen-w);
   height: 82px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 -6px 20px rgba(13, 20, 20, 0.07);
@@ -1337,7 +1340,7 @@ input:focus-visible {
 
 .scene-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 760px;
   margin: 0 auto;
   padding-top: 54px;
@@ -1502,7 +1505,7 @@ input:focus-visible {
 
 .analyze-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 852px;
   margin: 0 auto;
   padding-top: 54px;
@@ -1637,7 +1640,7 @@ input:focus-visible {
 
 .results-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 720px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -1913,7 +1916,7 @@ input:focus-visible {
 
 .recwheel-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 852px;
   margin: 0 auto;
   overflow: hidden;
@@ -2202,7 +2205,7 @@ input:focus-visible {
 
 .player-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 740px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -2410,7 +2413,7 @@ input:focus-visible {
 
 .diary-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 760px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -2846,7 +2849,7 @@ input:focus-visible {
 
 .diarylog-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 720px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -3042,7 +3045,7 @@ input:focus-visible {
 
 .profile-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 720px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -3101,8 +3104,8 @@ input:focus-visible {
 .pf-stats-card { top: 339px; height: 112px; }
 .pf-pref-card { top: 477px; height: 74px; }
 .pf-pet-card { top: 576px; height: 66px; }
-.pf-ach-card { top: 660px; height: 102px; }
-.pf-recent-card { top: 778px; height: 168px; }
+.pf-ach-card { top: 660px; height: 120px; }
+.pf-recent-card { top: 800px; height: 168px; }
 
 .pf-card-title {
   position: absolute;
@@ -3117,7 +3120,7 @@ input:focus-visible {
 .pf-t2 { top: 490px; }
 .pf-t3 { top: 588px; }
 .pf-t4 { top: 680px; }
-.pf-t5 { top: 798px; }
+.pf-t5 { top: 820px; }
 
 /* 成就徽章 */
 .pf-ach {
@@ -3267,7 +3270,7 @@ input:focus-visible {
 
 .petskin-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 1140px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -3523,7 +3526,7 @@ input:focus-visible {
 
 .tasks-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 720px;
   margin: 0 auto;
   background: #f6f9f7;
@@ -3979,7 +3982,7 @@ input:focus-visible {
 /* ============ 社区 ============ */
 .community-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   margin: 0 auto;
   background: var(--clay-bg);
 }
@@ -4021,7 +4024,7 @@ input:focus-visible {
 /* ============ 视频 ============ */
 .video-page {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   min-height: 820px;
   margin: 0 auto;
   padding: 106px 18px 130px;
@@ -4103,7 +4106,7 @@ input:focus-visible {
 /* ============ 音乐日记 · 流式创作表单 ============ */
 .diary-page2 {
   position: relative;
-  width: 393px;
+  width: var(--screen-w);
   margin: 0 auto;
   padding: 100px 18px 130px;
   background: var(--clay-bg);

@@ -97,7 +97,8 @@
 
 - 圆角：大卡片 **18–20px**；胶囊/标签 **半高（14–15px）**；徽标/头像 **圆形（50%）**；场景大卡用叶形 `27px 87px 27px 27px`。
 - 卡片阴影：`0 10px 22px rgba(0,0,0,.08)`（标准卡）/ `0 5px 18px rgba(13,20,20,.07)`（轻卡）。
-- 固定组件高度：状态栏 **54**、底部导航 **82**、迷你播放器 **354×62**、中心 FAB **42**、操作 FAB **44**。
+- 固定组件高度：状态栏 **54**、底部导航 **82**、迷你播放器 **高 62**（宽度响应式：左右各留白 19px）、中心 FAB **42**、操作 FAB **44**。
+- **满铺宽度**：底部导航、迷你播放器、各页面容器均使用 `width: var(--screen-w)`（或 `left/right` 对称定位）随设备宽度自适应，**不写死 393px**，以兼容 iPhone 16（393）与 16 Pro（402）等不同屏宽。
 - **场景大卡尺寸（统一）**：首页「为此刻推荐」横卡与场景选择页的卡统一为 **196×262**（图 192h + 文字 70h），徽标 38px，标题 16.5 / 副文 13.5，叶形圆角 `22px 64px 22px 22px`。原 Figma 尺寸 256×398 偏大、易占满整屏，故统一调小并让下方区块紧随，保留呼吸感。
 
 ### 动效（Motion Tokens，见 `:root`）
@@ -111,3 +112,79 @@
 | `--ease-spring` | `cubic-bezier(.34,1.56,.64,1)` | 宠物反应、勾选弹跳 |
 
 约束：动画一律用 CSS `@keyframes` 或可暂停 `setInterval`，**不使用常驻 `requestAnimationFrame`**，也**不使用 `backdrop-filter`**（毛玻璃用近不透明底色 + 阴影替代）；全局已加 `prefers-reduced-motion` 降级。
+
+---
+
+## 奶油黏土拟态设计系统（Cream-Mint Claymorphism）
+
+在 QQ 音乐「浅底 + 圆角 + 卡片 + 绿色强调」的基础上，引入**奶油黏土拟态**风格，让界面更「治愈、可爱、不土」。其配方借鉴黏土拟态（圆胖 + 多层柔影 + 非纯白底 + 圆体字），但**配色映射到奶油 + 薄荷绿**以保留 QQ 音乐品牌绿。
+
+### 黏土令牌（见 `styles.css :root`）
+
+| 语义 | 变量 | 说明 |
+| --- | --- | --- |
+| 卡面 | `--clay-surface` (`#fffef9`) | 非纯白的奶油底 |
+| 凹陷面 | `--clay-sunken` (`#f1f3ea`) | 输入框/凹槽 |
+| 黏土阴影 | `--clay-shadow` | 外阴影 + 白色高光双层叠加 |
+| 轻黏土阴影 | `--clay-shadow-sm` | 小卡/徽标 |
+| 凹陷阴影 | `--clay-inset` | 输入聚焦的内凹感 |
+| 圆角 | `--r-card:20` / `--r-button:16` / `--r-chip:14` / `--r-pill:999` | 圆胖是去土关键，但避免过大 |
+| 主 CTA 渐变 | `--g-cta` (`linear-gradient(135deg,#2cd97c,#0bbd5a)`) | 生成/确认按钮 |
+| 按压缩放 | `--press` (`0.95`) | 配合 `--ease-spring` |
+
+### 粉彩点缀（多彩可爱，用于标签/徽章）
+
+`--pastel-mint` 薄荷 · `--pastel-peach` 奶橙 · `--pastel-sky` 天蓝 · `--pastel-lilac` 丁香。
+
+### 字体
+
+引入 **Nunito**（拉丁标题/大数字，800/900 更圆胖）+ **DM Sans**（正文备选），中文回退 **Noto Sans SC**；通过 `--font-display` 应用于标题与数字。断网时优雅回退到 Noto Sans SC。
+
+### 签名元素
+
+首页/档案/分析页放 1–2 个**漂浮 blob**（`radial-gradient` 软边 + 8–10s `transform` 漂移动画，**不用 blur filter**），强化黏土治愈氛围。
+
+---
+
+## 页面与视图清单（13 个）
+
+| 键 | 页面 | 要点 |
+| --- | --- | --- |
+| `home` | 在听首页 | 搜索、音乐宠物入口、拍照推荐、场景推荐、迷你播放器 |
+| `scene` | 场景选择 | 5 种心情标签切换场景卡组 |
+| `analyze` | AI 分析中 | 步骤动画，2.4s 后自动进入推荐 |
+| `results` | 歌曲推荐 | 心情 chips + 推荐歌单 |
+| `recwheel` | 为你推荐 | 情绪转盘，卡片可点进播放 |
+| `player` | 在线听播放页 | 模拟播放引擎（进度/播放/上下首）|
+| `diary` | 音乐日记 · 创作 | 流式表单：心情文本 + 字数 + 照片 + 情绪/风格选择 + 高级选项 |
+| `diarylog` | 音乐日记 · 日历 | 整月日历 + 最近记录 |
+| `profile` | 我的在听档案 | 本月数据、偏好、成就徽章、最近在听 |
+| `petskin` | 我的专属陪伴 | 皮肤装扮 + 互动动作 + 亲密度等级 |
+| `tasks` | 每日任务 | 任务清单、完成解锁、进度持久化 |
+| `community` | 社区 | 公开日记信息流（点赞/评论/转发）|
+| `video` | 视频 | 视频网格占位 |
+
+---
+
+## 交互与状态模型
+
+- **路由**：`views` 对象映射「视图键 → `render*()` 函数」，返回 HTML 字符串经 `innerHTML` 整屏替换。
+- **历史栈**：`state.history` 入/出栈，`data-nav="back"` 返回；`state.navDir` 决定转场方向（前进/后退/淡入）。
+- **集中状态**：单一 `state` 对象承载当前视图、宠物 Tab、`sceneMood`、`diaryEmotion/diaryStyle/diaryAdvOpen`、`taskDone`、`player` 等。
+- **事件委托**：document 级单一点击处理器，按 `data-*` 分发——`data-nav` / `data-toast` / `data-task` / `data-toggle` / `data-pettab` / `data-scenemood` / `data-emotion` / `data-style` / `data-skin` / `data-act` / `data-action`。
+- **数据驱动**：内容由数组 `.map()` 渲染（`SCENE_DATA`、`REC_SONGS`、`FEED`、`EMOTIONS`、`STYLES`、`TASKS`、`PF_ACH`、`VIDEOS` …），扩充内容只需改数据 + 调容器高度。
+- **持久化**：`localStorage` 键 `"mpet"` 保存 `taskDone / diaryPublic / petTab / skinSel / sceneMood`；加载时做类型/范围校验，隐私模式异常静默忽略。
+- **播放引擎**：仅播放页用可暂停 `setInterval` 推进进度，离开视图即清除。
+
+---
+
+## 工程结构与运行
+
+纯原生 JS/HTML/CSS，无框架、无构建、无依赖。
+
+- `index.html` 入口（设备模拟器外壳 + 控制面板）→ `app.js`（视图/路由/状态/交互）+ `styles.css`（`:root` 令牌 + 各页样式）。
+- `api.js`：接口契约 + Mock 数据模块（`/api/music-pet/*`），为对接真实后端预留；当前原型用内联数组渲染。
+- 本地运行：`node dev-server.mjs` → `http://127.0.0.1:4173`（详见 [README.md](README.md)）。
+- 冒烟测试：`node smoke_test.mjs`。
+
+> 绝对定位页新增内容时，记得同步调大容器 `min-height` / 卡片 `height`，并保留与下方区块的间距（呼吸感），避免文字溢出卡片。

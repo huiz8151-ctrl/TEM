@@ -24,8 +24,11 @@ assertContains("index", index, [
 assertContains("app", app, [
   "iphone16: { name: \"iPhone 16\", width: 393, height: 852",
   "iphone16pro: { name: \"iPhone 16 Pro\", width: 402, height: 874",
-  "renderAiCompetitionHome",
-  "data-node-id=\"365:9308\"",
+  "renderHome",
+  "data-node-id=\"356:9307\"",
+  "const views = {",
+  "renderCommunity",
+  "renderDiary",
   "ai-scene-section",
   "ai-scene-track",
   "ai-mini-player",

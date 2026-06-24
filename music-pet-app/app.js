@@ -681,7 +681,7 @@ const PF_RECENT = REC_SONGS.slice(0, 3);
 function renderProfile() {
   return `
     <section class="ai-work-content" aria-label="我的在听档案">
-      <div class="profile-page" data-node-id="389:9702" style="min-height:1080px">
+      <div class="profile-page" data-node-id="389:9702" style="min-height:1102px">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">我的在听档案</h1>
 
@@ -710,7 +710,7 @@ function renderProfile() {
         <div class="pf-card pf-recent-card"></div>
         <span class="pf-card-title pf-t5">最近在听</span>
         ${PF_RECENT.map((s, i) => `
-        <div class="pf-rec-row" style="top:${822 + i * 44}px" data-nav="player">
+        <div class="pf-rec-row" style="top:${844 + i * 44}px" data-nav="player">
           <span class="pf-rec-cover" style="background:${s.cover}"></span>
           <strong class="pf-rec-title">${s.title}</strong>
           <em class="pf-rec-artist">${s.artist}</em>
