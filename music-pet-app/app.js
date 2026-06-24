@@ -17,10 +17,15 @@ const state = {
   view: "home",
   history: [],
   petTab: "skin",
+  sceneMood: 0,
+  skinSel: null,
+  diaryEmotion: 0,
+  diaryStyle: 0,
+  diaryAdvOpen: false,
   navDir: "forward",
   player: { playing: true, progress: 0.16, dur: 231 },
-  taskDone: [true, true, true, false],
-  taskTotal: 5,
+  taskDone: [true, true, true, false, false, false, false],
+  taskTotal: 7,
   diaryPublic: true
 };
 
@@ -42,7 +47,7 @@ function bottomNav(active) {
         <img src="${PIC}/首页 1.svg" alt="">
         <span>首页</span>
       </button>
-      <button type="button">
+      <button type="button" data-nav="video" class="${active === "video" ? "active" : ""}">
         <img src="${PIC}/视频 1.svg" alt="">
         <span>视频</span>
       </button>
@@ -50,7 +55,7 @@ function bottomNav(active) {
         <img src="${PIC}/Ellipse 13219.svg" alt="">
         <img class="center-glyph" src="${PIC}/Icon.svg" alt="">
       </button>
-      <button type="button">
+      <button type="button" data-nav="community" class="${active === "community" ? "active" : ""}">
         <img src="${PIC}/交流 1.svg" alt="">
         <span>社区</span>
       </button>
@@ -73,25 +78,46 @@ function miniPlayer() {
 }
 
 /* Two big scene cards — shared by home and the scene-selection page */
-function sceneCards() {
-  return `
-    <article class="scene-card s1" data-nav="scene">
-      <div class="sc-photo" style="background-image:url('${PIC}/Change Image Here.png')"></div>
-      <span class="sc-badge-img"><img src="${PIC}/Icon Container-1.svg" alt=""></span>
-      <div class="sc-text">
-        <strong>通勤路上</strong>
-        <em>在路上慢慢切换状态</em>
-      </div>
-    </article>
+/* 5 种心情 × 专属场景卡（数据驱动；用现有图片 + 粉彩 emoji 徽标） */
+const SCENE_DATA = [
+  { key: "放空", sub: "让思绪慢慢漂走，听点轻盈的 ☁", cards: [
+    { img: "Photo/City haze.png", title: "城市漫游", sub: "把当下变成旅途的背景", emoji: "🌧", bg: "var(--pastel-sky)" },
+    { img: "mood-2.png", title: "云端发呆", sub: "什么都不想的此刻", emoji: "☁️", bg: "var(--pastel-lilac)" }
+  ] },
+  { key: "专注", sub: "屏蔽干扰，进入心流 🎯", cards: [
+    { img: "Change Image Here.png", title: "通勤路上", sub: "在路上慢慢切换状态", emoji: "🎧", bg: "var(--pastel-mint)" },
+    { img: "mood-3.png", title: "深夜书桌", sub: "一首歌的专注", emoji: "📖", bg: "var(--pastel-peach)" }
+  ] },
+  { key: "提神", sub: "来点明亮的节奏，唤醒状态 ⚡", cards: [
+    { img: "mood-1.png", title: "清晨元气", sub: "用阳光开启一天", emoji: "🌅", bg: "var(--pastel-peach)" },
+    { img: "mood-5.png", title: "街头律动", sub: "踩着节拍往前走", emoji: "🎵", bg: "var(--pastel-mint)" }
+  ] },
+  { key: "陪伴", sub: "小Q陪你，不孤单 🐾", cards: [
+    { img: "mood-4.png", title: "治愈时刻", sub: "有人懂你的心情", emoji: "💚", bg: "var(--pastel-mint)" },
+    { img: "Photo/City haze.png", title: "雨天独处", sub: "和小Q一起听雨", emoji: "☔", bg: "var(--pastel-sky)" }
+  ] },
+  { key: "释放", sub: "把情绪都交给音乐 🔥", cards: [
+    { img: "mood-5.png", title: "尽情奔跑", sub: "把今天的情绪跑掉", emoji: "🏃", bg: "var(--pastel-peach)" },
+    { img: "mood-1.png", title: "放声大笑", sub: "卸下所有重量", emoji: "✨", bg: "var(--pastel-lilac)" }
+  ] }
+];
 
-    <article class="scene-card s2" data-nav="scene">
-      <div class="sc-photo" style="background-image:url('${PIC}/Photo/City haze.png')"></div>
-      <span class="sc-badge-img black"><img src="${PIC}/Group 1000001037.svg" alt=""></span>
+function sceneCard(card, target) {
+  return `
+    <article class="scene-card" data-nav="${target}">
+      <div class="sc-photo" style="background-image:url('${PIC}/${card.img}')"></div>
+      <span class="sc-badge-emoji" style="background:${card.bg}">${card.emoji}</span>
       <div class="sc-text">
-        <strong>城市漫游</strong>
-        <em>把当下变成旅途的背景</em>
+        <strong>${card.title}</strong>
+        <em>${card.sub}</em>
       </div>
     </article>`;
+}
+
+/* 首页“场景推荐”：跨心情精选 3 张，点击进入场景选择页 */
+function sceneCards() {
+  const picks = [SCENE_DATA[1].cards[0], SCENE_DATA[0].cards[0], SCENE_DATA[2].cards[0]];
+  return picks.map((c) => sceneCard(c, "scene")).join("");
 }
 
 /* ---------- Home (在听首页) ---------- */
@@ -201,14 +227,14 @@ function renderScene() {
         </div>
 
         <div class="scene-tabs">
-          ${SCENE_TABS.map((t, i) => `<button type="button" class="scene-tab${i === 0 ? " active" : ""}">${t}</button>`).join("")}
+          ${SCENE_DATA.map((m, i) => `<button type="button" class="scene-tab${i === state.sceneMood ? " active" : ""}" data-scenemood="${i}">${m.key}</button>`).join("")}
         </div>
 
         <h2 class="scene-section-title">选择你的此刻状态</h2>
-        <p class="scene-section-sub">AI将根据你的状态生成专属音乐氛围</p>
+        <p class="scene-section-sub">${SCENE_DATA[state.sceneMood].sub}</p>
 
         <div class="ai-scene-track scene-track-page">
-          ${sceneCards()}
+          ${SCENE_DATA[state.sceneMood].cards.map((c) => sceneCard(c, "analyze")).join("")}
         </div>
       </div>
     </section>
@@ -272,14 +298,21 @@ const REC_MOODS = ["雨天", "安静", "治愈", "怀念", "放空"];
 
 const REC_SONGS = [
   { title: "慢慢喜欢你", artist: "莫文蔚", cover: "#141f29", active: true },
-  { title: "想自由", artist: "林宥嘉", cover: "#bfcccc" },
-  { title: "Everyday", artist: "Ariana Grande", cover: "#bfcccc" }
+  { title: "想自由", artist: "林宥嘉", cover: "#5b6b6e" },
+  { title: "Everyday", artist: "Ariana Grande", cover: "#c98f7a" },
+  { title: "晴天", artist: "周杰伦", cover: "#7a93a8" },
+  { title: "小幸运", artist: "田馥甄", cover: "#d8a7b0" },
+  { title: "夜空中最亮的星", artist: "逃跑计划", cover: "#26354f" },
+  { title: "平凡之路", artist: "朴树", cover: "#8a8275" },
+  { title: "雨爱", artist: "杨丞琳", cover: "#6f7e8c" },
+  { title: "体面", artist: "于文文", cover: "#42505a" },
+  { title: "起风了", artist: "买辣椒也用券", cover: "#9ab0a0" }
 ];
 
 function songRow(song, i) {
   const top = 451 + i * 58;
   return `
-    <div class="song-row" style="top:${top}px">
+    <div class="song-row" style="top:${top}px" data-nav="player">
       <div class="song-cover" style="background:${song.cover}"></div>
       <span class="song-title">${song.title}</span>
       <span class="song-artist">${song.artist}</span>
@@ -289,9 +322,12 @@ function songRow(song, i) {
 }
 
 function renderResults() {
+  const listEnd = 451 + REC_SONGS.length * 58;
+  const mascotTop = listEnd + 8;
+  const pageH = listEnd + 260;
   return `
     <section class="ai-work-content" aria-label="歌曲推荐">
-      <div class="results-page" data-node-id="365:9389">
+      <div class="results-page" data-node-id="365:9389" style="min-height:${pageH}px">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">歌曲推荐</h1>
         <button class="results-more" type="button" aria-label="更多" data-toast="更多功能开发中">...</button>
@@ -313,8 +349,8 @@ function renderResults() {
 
         ${REC_SONGS.map((s, i) => songRow(s, i)).join("")}
 
-        <div class="results-mascot"><img src="${PIC}/33.png" alt=""></div>
-        <div class="results-bubble">
+        <div class="results-mascot" style="top:${mascotTop}px"><img src="${PIC}/33.png" alt=""></div>
+        <div class="results-bubble" style="top:${mascotTop - 8}px">
           <p>雨天最适合慢慢听歌了☁</p>
           <p>要不要我再帮你找找别的?</p>
         </div>
@@ -344,7 +380,7 @@ const MOOD_CARDS = [
 function moodCard(c) {
   return (
     rw(c.card, `<div class="rcard ${c.rot}"></div>`) +
-    rw(c.img, `<div class="rimg ${c.rot}"><img src="${PIC}/${c.src}" alt=""><span class="card-play"></span></div>`) +
+    rw(c.img, `<div class="rimg ${c.rot}" data-nav="player"><img src="${PIC}/${c.src}" alt=""><span class="card-play"></span></div>`) +
     rw(c.chip, `<div class="rchip ${c.rot}" style="background:${c.chipBg};color:${c.chipColor}">${c.chipText}</div>`) +
     rw(c.label, `<div class="rlabel ${c.rot}">${c.l1}<br>${c.l2}</div>`)
   );
@@ -459,65 +495,112 @@ function renderPlayer() {
 
 /* ---------- 音乐日记 (日记编辑 + 公开信息流) ---------- */
 
+const FEED = [
+  { name: "小鲸鱼", av: "#c4cdd0", time: "2分钟前", text: "雨后的城市，空气里都是温柔的味道 ☔", photo: "Photo/City haze.png", song: "想自由", artist: "林宥嘉", likes: 128, cmts: 32, shares: 12 },
+  { name: "星星也听歌", av: "#aacbe6", time: "1小时前", text: "夜里循环这首，整个人都软下来了 🌙", photo: "Photo/City haze.png", song: "晴天", artist: "周杰伦", likes: 86, cmts: 14, shares: 5 },
+  { name: "阿吉", av: "#f3c6a6", time: "3小时前", text: "通勤路上的阳光刚刚好 ☀", photo: "Change Image Here.png", song: "平凡之路", artist: "朴树", likes: 203, cmts: 41, shares: 18 },
+  { name: "柚子茶", av: "#bfe3c8", time: "昨天", text: "失眠的夜，小Q陪我听到天亮 🍵", photo: "Photo/City haze.png", song: "体面", artist: "于文文", likes: 57, cmts: 9, shares: 3 },
+  { name: "海风", av: "#d9cdf0", time: "昨天", text: "把心情写进歌单，存起来 🎐", photo: "Change Image Here.png", song: "起风了", artist: "买辣椒也用券", likes: 142, cmts: 26, shares: 9 }
+];
+
+const ICON_LIKE = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20S4 15 4 9.5A3.8 3.8 0 0 1 12 7 3.8 3.8 0 0 1 20 9.5C20 15 12 20 12 20z" fill="none" stroke="#0a0e0e" stroke-width="1.8"/></svg>`;
+const ICON_CMT = `<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M4 5h16v11H9l-4 3v-3H4z" fill="none" stroke="#0a0e0e" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+const ICON_SHARE = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12 20 5 15 21 12 13z" fill="none" stroke="#0a0e0e" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
+
+function feedCard(item) {
+  return `
+    <article class="feed-item" data-nav="player">
+      <div class="feed-head">
+        <span class="feed-av" style="background:${item.av}"></span>
+        <div class="feed-meta"><strong>${item.name}</strong><em>${item.time}</em></div>
+        <span class="feed-dots" data-toast="更多操作">···</span>
+      </div>
+      <p class="feed-txt">${item.text}</p>
+      <div class="feed-media">
+        <div class="feed-pic" style="background-image:url('${PIC}/${item.photo}')"></div>
+        <div class="feed-trk">
+          <span class="feed-trk-cover"></span>
+          <div class="feed-trk-info"><strong>${item.song}</strong><em>${item.artist}</em></div>
+          <span class="feed-trk-play" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="feed-stats">
+        <span>${ICON_LIKE}${item.likes}</span>
+        <span>${ICON_CMT}${item.cmts}</span>
+        <span>${ICON_SHARE}${item.shares}</span>
+      </div>
+    </article>`;
+}
+
+const EMOTIONS = ["治愈", "平静", "轻快", "怀念", "释放", "温柔", "元气", "深夜"];
+const STYLES = [["流行", "🎵"], ["民谣", "🪕"], ["电子", "🎛️"], ["古典", "🎹"], ["摇滚", "🎸"], ["爵士", "🎷"], ["说唱", "🎤"]];
+
 function renderDiary() {
   return `
     <section class="ai-work-content" aria-label="音乐日记">
-      <div class="diary-page" data-node-id="365:9490">
+      <div class="diary-page2">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">音乐日记</h1>
         <button class="diary-save" type="button" data-nav="diarylog">保存日记</button>
 
-        <div class="diary-card composer-card"></div>
-        <div class="composer-photo">
-          <img src="${PIC}/Photo/City haze.png" alt="">
-          <span class="composer-close">×</span>
+        <div class="dc-form">
+          <div class="dc-mood-card">
+            <div class="dc-mood-head">
+              <span>写下此刻心情</span>
+              <button class="dc-help" type="button" data-toast="写下你此刻的感受，小Q 会据此推荐音乐">?</button>
+            </div>
+            <textarea class="dc-mood-input" maxlength="2800" placeholder="我…"></textarea>
+            <span class="dc-counter">0/2800</span>
+          </div>
+
+          <h3 class="dc-label">添加照片</h3>
+          <div class="dc-photos">
+            <div class="dc-photo"><img src="${PIC}/Photo/City haze.png" alt=""><span class="dc-photo-x" data-toast="已移除照片">×</span></div>
+            <button class="dc-photo-add" type="button" data-toast="上传或拍照，敬请期待">+</button>
+          </div>
+
+          <h3 class="dc-label">选择情绪</h3>
+          <div class="dc-row">
+            ${EMOTIONS.map((e, i) => `<button type="button" class="dc-chip${i === state.diaryEmotion ? " on" : ""}" data-emotion="${i}">${e}</button>`).join("")}
+          </div>
+
+          <h3 class="dc-label">选择音乐风格</h3>
+          <div class="dc-row">
+            ${STYLES.map(([n, ic], i) => `<button type="button" class="dc-style${i === state.diaryStyle ? " on" : ""}" data-style="${i}"><b>${ic}</b><em>${n}</em></button>`).join("")}
+          </div>
+
+          <button class="dc-advanced${state.diaryAdvOpen ? " open" : ""}" type="button" data-advtoggle>
+            <span>✦ 高级选项</span><i class="dc-chevron"></i>
+          </button>
+          <div class="dc-adv-panel${state.diaryAdvOpen ? " open" : ""}">
+            <div class="dc-song">
+              <span class="dc-song-cover"></span>
+              <div class="dc-song-info"><strong>慢慢喜欢你</strong><em>莫文蔚</em></div>
+              <span class="dc-song-play" aria-hidden="true"></span>
+            </div>
+            <div class="dc-privacy">
+              <span class="dc-priv-label">公开设置</span>
+              <span class="diary-toggle dc-tg${state.diaryPublic ? "" : " active"}" data-toggle="private">
+                <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="10" width="14" height="10" rx="2" fill="currentColor"/></svg>
+                私人
+              </span>
+              <span class="diary-toggle dc-tg${state.diaryPublic ? " active" : ""}" data-toggle="public">●&nbsp;公开</span>
+            </div>
+          </div>
+
+          <button class="dc-generate" type="button" data-nav="diarylog">
+            <span class="dc-gen-ico" aria-hidden="true"></span>生成此刻小记
+          </button>
         </div>
-        <div class="composer-textarea"><textarea class="composer-input" placeholder="记录此刻的心情..."></textarea></div>
-        <div class="composer-songchip">
-          <span class="cs-cover"></span>
-          <strong class="cs-title">慢慢喜欢你</strong>
-          <em class="cs-artist">莫文蔚</em>
-          <span class="cs-play" aria-hidden="true"></span>
+
+        <div class="dc-feed-head">
+          <span class="diary-tab2 active">公开日记</span>
+          <span class="diary-tab2">推荐</span>
+          <span class="diary-tab2">关注</span>
         </div>
-        <span class="ctag t1">雨天</span>
-        <span class="ctag t2">安静</span>
-        <span class="ctag t3">治愈</span>
-        <span class="ctag-add">+</span>
-        <div class="composer-divider"></div>
-        <span class="composer-publabel">公开设置</span>
-        <span class="diary-toggle toggle-private${state.diaryPublic ? "" : " active"}" data-toggle="private">
-          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="5" y="10" width="14" height="10" rx="2" fill="currentColor"/></svg>
-          私人
-        </span>
-        <span class="diary-toggle toggle-public${state.diaryPublic ? " active" : ""}" data-toggle="public">●&nbsp;&nbsp;公开</span>
-
-        <span class="diary-tab tab1">公开日记</span>
-        <span class="diary-tab tab2 active">推荐</span>
-        <span class="diary-tab tab3">关注</span>
-
-        <div class="diary-card feed-card"></div>
-        <span class="feed-avatar a1"></span>
-        <strong class="feed-name n1">小鲸鱼</strong>
-        <em class="feed-time tm1">2分钟前</em>
-        <span class="feed-more">...</span>
-        <p class="feed-text">雨后的城市，空气里都是温柔的味道 ☔</p>
-        <div class="feed-photo"><img src="${PIC}/Photo/City haze.png" alt=""></div>
-        <div class="feed-song">
-          <span class="fs-cover"></span>
-          <strong class="fs-title">想自由</strong>
-          <em class="fs-artist">林宥嘉</em>
-          <span class="fs-play" aria-hidden="true"></span>
+        <div class="feed-list">
+          ${FEED.map(feedCard).join("")}
         </div>
-        <span class="feed-stat s-like"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20S4 15 4 9.5A3.8 3.8 0 0 1 12 7 3.8 3.8 0 0 1 20 9.5C20 15 12 20 12 20z" fill="none" stroke="#0a0e0e" stroke-width="1.8"/></svg>128</span>
-        <span class="feed-stat s-cmt"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M4 5h16v11H9l-4 3v-3H4z" fill="none" stroke="#0a0e0e" stroke-width="1.8" stroke-linejoin="round"/></svg>32</span>
-        <span class="feed-stat s-share"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 12 20 5 15 21 12 13z" fill="none" stroke="#0a0e0e" stroke-width="1.8" stroke-linejoin="round"/></svg>12</span>
-
-        <div class="diary-card feed-preview"></div>
-        <span class="feed-avatar a2"></span>
-        <strong class="feed-name n2">星星也听歌</strong>
-        <em class="feed-time tm2">1小时前</em>
-
-        <button class="diary-fab" type="button" aria-label="新建">+</button>
       </div>
     </section>
 
@@ -536,35 +619,49 @@ const MOOD_LINES = [
   ["l4", 211, 617, 46, "#84eaaa"], ["l5", 261, 609, 58, "#22d66b"]
 ];
 
+const DIARY_HAS = [3, 6, 9, 12, 14, 16, 18, 21, 25, 28];
+const DIARY_RECORDS = [
+  { time: "今天 21:18", title: "低噪放松的一晚", desc: "小Q推荐了 12 首歌，整体情绪从疲惫转向平静。", mood: "平静" },
+  { time: "昨天 08:42", title: "通勤路上的绿色能量", desc: "照片识别为晴天街景，推荐节奏更明亮。", mood: "轻快" },
+  { time: "6月16日 23:50", title: "雨夜的独白", desc: "和小Q聊了很久，存下 3 首单曲循环。", mood: "治愈" }
+];
+
+function recordCard(rec, i) {
+  const t = 414 + i * 130;
+  return `
+    <div class="dl-card" style="top:${t}px" data-nav="player"></div>
+    <span class="dl-time" style="top:${t + 22}px">${rec.time}</span>
+    <span class="dl-title" style="top:${t + 48}px">${rec.title}</span>
+    <span class="dl-desc" style="top:${t + 78}px">${rec.desc}</span>
+    <span class="dl-pill" style="top:${t + 26}px">${rec.mood}</span>`;
+}
+
 function renderDiaryLog() {
+  const curveTop = 414 + DIARY_RECORDS.length * 130;
+  const pageH = curveTop + 88 + 130;
   return `
     <section class="ai-work-content" aria-label="音乐日记">
-      <div class="diarylog-page" data-node-id="389:9329">
+      <div class="diarylog-page" data-node-id="389:9329" style="min-height:${pageH}px">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">音乐日记</h1>
 
         <div class="dl-cal-card"></div>
         <span class="dl-month">6月</span>
-        ${DIARY_WEEKS.map(([w, l]) => `<span class="dl-wk" style="left:${l}px">${w}</span>`).join("")}
-        ${DIARY_DATES.map(([n, l]) => `<span class="dl-date${n === 18 ? " sel" : ""}" style="left:${l}px">${n}</span>`).join("")}
+        <div class="dl-cal-grid">
+          ${["一", "二", "三", "四", "五", "六", "日"].map((w) => `<span class="dl-wk2">${w}</span>`).join("")}
+          ${Array.from({ length: 30 }, (_, i) => {
+            const d = i + 1;
+            const cls = (d === 18 ? " today" : "") + (DIARY_HAS.includes(d) ? " has" : "");
+            return `<span class="dl-day${cls}">${d}</span>`;
+          }).join("")}
+        </div>
 
         <span class="dl-recent">最近记录</span>
+        ${DIARY_RECORDS.map(recordCard).join("")}
 
-        <div class="dl-card c1" data-nav="player"></div>
-        <span class="dl-time t1">今天 21:18</span>
-        <span class="dl-title ti1">低噪放松的一晚</span>
-        <span class="dl-desc d1">小Q推荐了 12 首歌，整体情绪从疲惫转向平静。</span>
-        <span class="dl-pill p1">平静</span>
-
-        <div class="dl-card c2"></div>
-        <span class="dl-time t2">昨天 08:42</span>
-        <span class="dl-title ti2">通勤路上的绿色能量</span>
-        <span class="dl-desc d2">照片识别为晴天街景，推荐节奏更明亮。</span>
-        <span class="dl-pill p2">轻快</span>
-
-        <div class="dl-card c3"></div>
-        <span class="dl-curve-title">本周情绪曲线</span>
-        ${MOOD_LINES.map(([c, l, t, w, bg]) => `<i class="dl-line ${c}" style="left:${l}px;top:${t}px;width:${w}px;background:${bg}"></i>`).join("")}
+        <div class="dl-card dl-curve-card" style="top:${curveTop}px"></div>
+        <span class="dl-curve-title" style="top:${curveTop + 20}px">本周情绪曲线</span>
+        ${MOOD_LINES.map(([c, l, t, w, bg]) => `<i class="dl-line ${c}" style="left:${l}px;top:${curveTop + (t - 565)}px;width:${w}px;background:${bg}"></i>`).join("")}
       </div>
     </section>
 
@@ -578,11 +675,13 @@ function renderDiaryLog() {
 
 const PF_STATS = [[42, "陪听歌曲", 79], [18, "日记", 179], [6, "分享", 279]];
 const PF_PREFS = [["低噪", 43], ["治愈", 111], ["通勤", 179], ["晚间", 247]];
+const PF_ACH = [["🎵", "听歌达人", "var(--pastel-mint)"], ["🌙", "夜猫子", "var(--pastel-lilac)"], ["📖", "日记家", "var(--pastel-peach)"], ["🔥", "连续7天", "var(--pastel-sky)"]];
+const PF_RECENT = REC_SONGS.slice(0, 3);
 
 function renderProfile() {
   return `
     <section class="ai-work-content" aria-label="我的在听档案">
-      <div class="profile-page" data-node-id="389:9702">
+      <div class="profile-page" data-node-id="389:9702" style="min-height:1080px">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">我的在听档案</h1>
 
@@ -603,6 +702,20 @@ function renderProfile() {
         <span class="pf-card-title pf-t3">宠物声音和陪伴方式</span>
         <span class="pf-pet-sub">温柔提醒 · 每晚 21:30</span>
         <button class="pf-setting" type="button" data-nav="petskin">去设置</button>
+
+        <div class="pf-card pf-ach-card"></div>
+        <span class="pf-card-title pf-t4">成就徽章</span>
+        ${PF_ACH.map(([e, l, bg], i) => `<span class="pf-ach" style="left:${39 + i * 82}px"><b style="background:${bg}">${e}</b><em>${l}</em></span>`).join("")}
+
+        <div class="pf-card pf-recent-card"></div>
+        <span class="pf-card-title pf-t5">最近在听</span>
+        ${PF_RECENT.map((s, i) => `
+        <div class="pf-rec-row" style="top:${822 + i * 44}px" data-nav="player">
+          <span class="pf-rec-cover" style="background:${s.cover}"></span>
+          <strong class="pf-rec-title">${s.title}</strong>
+          <em class="pf-rec-artist">${s.artist}</em>
+          <span class="pf-rec-play" aria-hidden="true"></span>
+        </div>`).join("")}
       </div>
     </section>
 
@@ -652,8 +765,8 @@ function renderSkinsBlock() {
     <span class="ps-group g1">基础款 ⌄</span>
     <span class="ps-group g2">特殊款 ⌄</span>
     ${SKINS.map(([src, l, t, name, nl, nt]) =>
-      `<div class="ps-skin" style="left:${l}px;top:${t}px"><img src="${PIC}/${src}" alt=""></div>` +
-      `<span class="ps-skin-name" style="left:${nl}px;top:${nt}px">${name}</span>`
+      `<div class="ps-skin${name === state.skinSel ? " sel" : ""}" style="left:${l}px;top:${t}px" data-skin="${name}"><img src="${PIC}/${src}" alt=""></div>` +
+      `<span class="ps-skin-name${name === state.skinSel ? " sel" : ""}" style="left:${nl}px;top:${nt}px">${name}</span>`
     ).join("")}
     <span class="ps-more">——更多装扮，正在上线中——</span>
   `;
@@ -670,7 +783,7 @@ function renderActionsBlock() {
     ${[557, 692, 827].map((t) => `<i class="ps-act-divider" style="top:${t}px"></i>`).join("")}
     ${ACT_TIERS.map(([n, num, nt, vt]) => `<span class="ps-tier-name" style="top:${nt}px">${n}</span><span class="ps-tier-num" style="top:${vt}px">${num}</span>`).join("")}
     ${ACTIONS.map(([src, il, it, iw, ih, name, nl, nt]) =>
-      `<img class="ps-act-img" src="${PIC}/${src}" style="left:${il}px;top:${it}px;width:${iw}px;height:${ih}px" alt="">` +
+      `<img class="ps-act-img" src="${PIC}/${src}" style="left:${il}px;top:${it}px;width:${iw}px;height:${ih}px" alt="" data-act="${name}">` +
       `<span class="ps-act-name" style="left:${nl}px;top:${nt}px">${name}</span>`
     ).join("")}
     <span class="ps-more ps-more-act">——更多动作，正在上线中——</span>
@@ -719,7 +832,10 @@ const TASKS = [
   [true, "听完 3 首推荐歌", "让小Q获得音乐能量", "能量 +20", "#53b7ff"],
   [true, "和小Q聊天 1 次", "提升亲密度", "亲密 +12", "#22d66b"],
   [true, "写一篇音乐日记", "沉淀今日心情", "经验 +18", "#ffb84d"],
-  [false, "分享音乐瞬间", "获得装扮碎片", "碎片 +1", "#a68bff"]
+  [false, "分享音乐瞬间", "获得装扮碎片", "碎片 +1", "#a68bff"],
+  [false, "给宠物换个装扮", "解锁新表情", "经验 +10", "#4dd0c0"],
+  [false, "完成一次拍照推荐", "让 AI 更懂你", "能量 +15", "#ff8fab"],
+  [false, "连续陪听 7 天", "解锁限定皮肤", "碎片 +2", "#7c9cff"]
 ];
 
 function taskDoneCount() {
@@ -727,9 +843,10 @@ function taskDoneCount() {
 }
 
 function renderTasks() {
+  const pageH = 311 + TASKS.length * 86 + 130;
   return `
     <section class="ai-work-content" aria-label="任务">
-      <div class="tasks-page" data-node-id="446:326">
+      <div class="tasks-page" data-node-id="446:326" style="min-height:${pageH}px">
         <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
         <h1 class="results-title">任务</h1>
 
@@ -760,9 +877,73 @@ function renderTasks() {
   `;
 }
 
+/* ---------- 社区（复用日记信息流） ---------- */
+
+function renderCommunity() {
+  return `
+    <section class="ai-work-content" aria-label="社区">
+      <div class="community-page">
+        <h1 class="results-title">社区</h1>
+        <div class="comm-tabs">
+          <span class="comm-tab active">推荐</span>
+          <span class="comm-tab">关注</span>
+          <span class="comm-tab">附近</span>
+        </div>
+        <div class="feed-list comm-feed">
+          ${FEED.map(feedCard).join("")}
+        </div>
+      </div>
+    </section>
+
+    ${statusBar()}
+    ${miniPlayer()}
+    ${bottomNav("community")}
+  `;
+}
+
+/* ---------- 视频 ---------- */
+
+const VIDEOS = [
+  { title: "雨天的城市漫游", author: "小鲸鱼", cover: "Photo/City haze.png", len: "1:24" },
+  { title: "通勤路上的光", author: "阿吉", cover: "Change Image Here.png", len: "0:48" },
+  { title: "深夜 Lo-fi 现场", author: "星星也听歌", cover: "Photo/City haze.png", len: "3:12" },
+  { title: "小Q的一天", author: "音乐宠物", cover: "33.png", len: "0:36" },
+  { title: "晴天骑行 vlog", author: "海风", cover: "Change Image Here.png", len: "2:05" },
+  { title: "治愈系钢琴", author: "柚子茶", cover: "Photo/City haze.png", len: "4:30" }
+];
+
+function videoCard(v) {
+  return `
+    <div class="video-card" data-toast="视频播放，敬请期待 ▶">
+      <div class="video-cover" style="background-image:url('${PIC}/${v.cover}')">
+        <span class="video-play" aria-hidden="true"></span>
+        <span class="video-len">${v.len}</span>
+      </div>
+      <strong class="video-title">${v.title}</strong>
+      <em class="video-author">@${v.author}</em>
+    </div>`;
+}
+
+function renderVideo() {
+  return `
+    <section class="ai-work-content" aria-label="视频">
+      <div class="video-page">
+        <h1 class="results-title">视频</h1>
+        <div class="video-grid">
+          ${VIDEOS.map(videoCard).join("")}
+        </div>
+      </div>
+    </section>
+
+    ${statusBar()}
+    ${miniPlayer()}
+    ${bottomNav("video")}
+  `;
+}
+
 /* ---------- Router ---------- */
 
-const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile, petskin: renderPetskin, tasks: renderTasks };
+const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile, petskin: renderPetskin, tasks: renderTasks, community: renderCommunity, video: renderVideo };
 
 let analyzeTimer;
 
@@ -819,6 +1000,15 @@ function togglePlay() {
 
 /* ---------- Toast（给“点了没目的页”的入口兜底反馈） ---------- */
 
+function bouncePet(selector) {
+  const pet = screen.querySelector(selector);
+  if (!pet) return;
+  pet.classList.remove("pet-react");
+  void pet.offsetWidth;
+  pet.classList.add("pet-react");
+  pet.addEventListener("animationend", () => pet.classList.remove("pet-react"), { once: true });
+}
+
 let toastTimer;
 
 function toast(msg) {
@@ -872,6 +1062,7 @@ function renderView() {
   paintPlayer();
   syncPlayerTimer();
   setupReveal(content);
+  saveState();
 
   /* AI分析中 → 自动进入歌曲推荐 */
   if (state.view === "analyze") {
@@ -910,6 +1101,53 @@ document.addEventListener("click", (event) => {
     void petEl.offsetWidth; /* restart the animation */
     petEl.classList.add("pet-react");
     petEl.addEventListener("animationend", () => petEl.classList.remove("pet-react"), { once: true });
+    return;
+  }
+
+  /* 专属陪伴·选皮肤：选中态 + 宠物开心反应 + toast */
+  const skinEl = event.target.closest(".ps-skin[data-skin]");
+  if (skinEl && screen.contains(skinEl)) {
+    const name = skinEl.dataset.skin;
+    state.skinSel = name;
+    screen.querySelectorAll(".ps-skin.sel, .ps-skin-name.sel").forEach((e) => e.classList.remove("sel"));
+    skinEl.classList.add("sel");
+    skinEl.nextElementSibling && skinEl.nextElementSibling.classList.add("sel");
+    bouncePet(".ps-pet");
+    toast(`已切换皮肤：${name} 🎧`);
+    return;
+  }
+
+  /* 专属陪伴·动作：宠物表演该动作 */
+  const actEl = event.target.closest(".ps-act-img[data-act]");
+  if (actEl && screen.contains(actEl)) {
+    bouncePet(".ps-pet");
+    toast(`小Q 正在「${actEl.dataset.act}」`);
+    return;
+  }
+
+  /* 日记创作：选情绪 */
+  const emoEl = event.target.closest(".dc-chip[data-emotion]");
+  if (emoEl && screen.contains(emoEl)) {
+    state.diaryEmotion = Number(emoEl.dataset.emotion);
+    emoEl.parentElement.querySelectorAll(".dc-chip").forEach((c) => c.classList.toggle("on", c === emoEl));
+    return;
+  }
+
+  /* 日记创作：选音乐风格 */
+  const styEl = event.target.closest(".dc-style[data-style]");
+  if (styEl && screen.contains(styEl)) {
+    state.diaryStyle = Number(styEl.dataset.style);
+    styEl.parentElement.querySelectorAll(".dc-style").forEach((c) => c.classList.toggle("on", c === styEl));
+    return;
+  }
+
+  /* 日记创作：高级选项折叠 */
+  const advEl = event.target.closest("[data-advtoggle]");
+  if (advEl && screen.contains(advEl)) {
+    state.diaryAdvOpen = !state.diaryAdvOpen;
+    advEl.classList.toggle("open", state.diaryAdvOpen);
+    const panel = advEl.parentElement.querySelector(".dc-adv-panel");
+    if (panel) panel.classList.toggle("open", state.diaryAdvOpen);
     return;
   }
 
@@ -1046,13 +1284,51 @@ document.querySelector("#zoom").addEventListener("input", (event) => {
   applyDevice();
 });
 
-/* Activate a tab chip on the scene page (visual only) */
-document.addEventListener("click", (event) => {
-  const tab = event.target.closest(".scene-tab");
-  if (!tab) return;
-  tab.parentElement.querySelectorAll(".scene-tab").forEach((t) => t.classList.remove("active"));
-  tab.classList.add("active");
+/* 日记创作：心情字数统计 */
+document.addEventListener("input", (event) => {
+  const ta = event.target.closest(".dc-mood-input");
+  if (!ta) return;
+  const counter = ta.parentElement.querySelector(".dc-counter");
+  if (counter) counter.textContent = `${ta.value.length}/2800`;
 });
 
+/* 场景页心情标签：切换 sceneMood → 换副标题 + 场景卡组 */
+document.addEventListener("click", (event) => {
+  const tab = event.target.closest(".scene-tab[data-scenemood]");
+  if (!tab || !screen.contains(tab)) return;
+  const m = Number(tab.dataset.scenemood);
+  if (m === state.sceneMood) return;
+  state.sceneMood = m;
+  state.navDir = "fade";
+  renderView();
+});
+
+/* ---------- 轻量持久化（刷新/演示可续） ---------- */
+
+function saveState() {
+  try {
+    localStorage.setItem("mpet", JSON.stringify({
+      taskDone: state.taskDone,
+      diaryPublic: state.diaryPublic,
+      petTab: state.petTab,
+      skinSel: state.skinSel,
+      sceneMood: state.sceneMood
+    }));
+  } catch (e) { /* 隐私模式等忽略 */ }
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem("mpet"));
+    if (!s) return;
+    if (Array.isArray(s.taskDone) && s.taskDone.length === TASKS.length) state.taskDone = s.taskDone;
+    if (typeof s.diaryPublic === "boolean") state.diaryPublic = s.diaryPublic;
+    if (s.petTab === "skin" || s.petTab === "action") state.petTab = s.petTab;
+    if ("skinSel" in s) state.skinSel = s.skinSel;
+    if (Number.isInteger(s.sceneMood) && s.sceneMood >= 0 && s.sceneMood < SCENE_DATA.length) state.sceneMood = s.sceneMood;
+  } catch (e) { /* ignore */ }
+}
+
+loadState();
 applyDevice();
 renderView();
