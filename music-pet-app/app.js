@@ -26,10 +26,246 @@ const state = {
   player: { playing: true, progress: 0.16, dur: 231 },
   taskDone: [true, true, true, false, false, false, false],
   taskTotal: 7,
-  diaryPublic: true
+  diaryPublic: true,
+  musicMode: "commute",
+  growthPlan: null,
+  isAnalyzing: false,
+  photoName: "",
+  photoPreview: "",
+  petStore: null,
+  equipMessage: "",
+  currentSong: null,
+  isPlaying: false,
+  audioProgress: 0,
+  audioCurrentTime: 0,
+  audioDuration: 30,
+  isSeeking: false,
+  liveEnergy: 0,
+  liveBeat: 0,
+  playError: "",
+  chatMessages: [
+    { role: "pet", text: "我在这里。你可以跟我说现在的心情，也可以让我按照片、通勤或正在听的歌帮你找音乐。" },
+    { role: "user", text: "今天路上有点累。" },
+    { role: "pet", text: "那我陪你慢一点听。先把节奏放轻，等你缓过来我们再切到明亮一点的歌。" }
+  ],
+  toast: ""
 };
 
 const PIC = "./picture";
+const audioPlayer = new Audio();
+audioPlayer.crossOrigin = "anonymous";
+let audioContext;
+let audioSourceNode;
+let audioAnalyser;
+let audioFrequencyData;
+let audioRaf = 0;
+let lastBeatAt = 0;
+
+audioPlayer.addEventListener("timeupdate", updateAudioProgress);
+audioPlayer.addEventListener("durationchange", updateAudioProgress);
+audioPlayer.addEventListener("ended", () => {
+  state.isPlaying = false;
+  state.audioProgress = 0;
+  state.audioCurrentTime = 0;
+  stopLiveRhythm();
+  renderView({ animate: false });
+});
+audioPlayer.addEventListener("error", () => {
+  state.isPlaying = false;
+  stopLiveRhythm();
+  state.playError = "试听音频暂时无法播放";
+  renderView({ animate: false });
+});
+
+const OUTFIT_IDS = {
+  "星屿": "xingyu",
+  "月庭": "yueting",
+  "虹翼": "hongyi",
+  "日冕": "rimian",
+  "花信": "huaxin",
+  "星夜": "xingye"
+};
+
+const ACTION_IDS = {
+  "点头晃晃": "nod",
+  "安静听歌": "listen",
+  "偷偷看你": "peek",
+  "开心转圈": "spin",
+  "元气满满": "cheer"
+};
+
+const MUSIC_GROWTH_MODES = {
+  commute: {
+    title: "通勤路上",
+    song: "晴天",
+    artist: "周杰伦",
+    mood: "轻快陪伴",
+    outfit: "星屿耳机",
+    outfitImg: "lan2 2.png",
+    action: "点头晃晃",
+    petImg: "act2.png",
+    rhythm: "steady",
+    bpm: 92,
+    energy: 68,
+    intimacy: 42,
+    growth: 340,
+    shards: 6,
+    speech: "我跟着城市节奏轻轻点头，帮你把通勤切到好心情。",
+    unlock: "再听 2 首通勤歌单，解锁「云汐」配色",
+    tags: ["通勤", "轻快", "陪伴"]
+  },
+  heal: {
+    title: "雨天放松",
+    song: "慢慢喜欢你",
+    artist: "莫文蔚",
+    mood: "安静治愈",
+    outfit: "月庭耳机",
+    outfitImg: "绿色 2.png",
+    action: "安静听歌",
+    petImg: "act8.png",
+    rhythm: "soft",
+    bpm: 74,
+    energy: 46,
+    intimacy: 58,
+    growth: 392,
+    shards: 8,
+    speech: "我会安静陪你，把照片里的雨声和最近的歌都放轻一点。",
+    unlock: "治愈值满 60 后，解锁「花信」温柔装扮",
+    tags: ["治愈", "雨天", "低噪"]
+  },
+  focus: {
+    title: "学习专注",
+    song: "Aesthetic Vibes",
+    artist: "Morning Tape",
+    mood: "稳定专注",
+    outfit: "虹翼耳机",
+    outfitImg: "4 2.png",
+    action: "偷偷看你",
+    petImg: "act9.png",
+    rhythm: "focus",
+    bpm: 82,
+    energy: 54,
+    intimacy: 49,
+    growth: 368,
+    shards: 7,
+    speech: "我会降低动作幅度，只在节拍点提醒你保持状态。",
+    unlock: "连续专注 20 分钟，获得「星夜」碎片 +1",
+    tags: ["专注", "Lo-fi", "低干扰"]
+  },
+  energy: {
+    title: "运动提神",
+    song: "Everyday",
+    artist: "Ariana Grande",
+    mood: "元气释放",
+    outfit: "日冕耳机",
+    outfitImg: "黄色 2.png",
+    action: "开心转圈",
+    petImg: "act5.png",
+    rhythm: "bounce",
+    bpm: 126,
+    energy: 88,
+    intimacy: 45,
+    growth: 426,
+    shards: 9,
+    speech: "这首节奏更亮，我会跟着鼓点摇摆，帮你把能量提起来。",
+    unlock: "完成一次运动听歌，解锁「元气满满」动作预览",
+    tags: ["运动", "高能", "律动"]
+  }
+};
+
+function currentGrowthMode() {
+  const base = MUSIC_GROWTH_MODES[state.musicMode] || MUSIC_GROWTH_MODES.commute;
+  const plan = state.growthPlan;
+  if (!plan || plan.frontendMode !== state.musicMode) return base;
+
+  const topSong = plan.songs?.[0];
+  return {
+    ...base,
+    title: plan.moment?.sceneLabel || base.title,
+    song: topSong?.title || base.song,
+    artist: topSong?.artist || base.artist,
+    mood: plan.pet?.mood || base.mood,
+    outfit: plan.pet?.outfit || base.outfit,
+    outfitImg: plan.pet?.outfitImg || base.outfitImg,
+    action: plan.pet?.action || base.action,
+    petImg: plan.pet?.petImg || base.petImg,
+    rhythm: plan.pet?.rhythm || base.rhythm,
+    bpm: topSong?.bpm || base.bpm,
+    beatSpeed: plan.pet?.rhythmProfile?.speed || base.beatSpeed || 1,
+    beatLift: plan.pet?.rhythmProfile?.lift || base.beatLift || 6,
+    beatStrength: plan.pet?.rhythmProfile?.strength || base.energy,
+    energy: plan.pet?.energy ?? base.energy,
+    intimacy: plan.pet?.intimacy ?? base.intimacy,
+    growth: plan.pet?.growth ?? base.growth,
+    shards: plan.pet?.shards ?? base.shards,
+    speech: plan.pet?.reply || base.speech,
+    unlock: plan.pet?.unlock || base.unlock,
+    tags: plan.intent?.musicTags?.slice(0, 3) || base.tags,
+    aiReason: plan.intent?.reason,
+    pipeline: plan.pipeline
+  };
+}
+
+async function requestGrowthRecommendation(mode, source = "manual", imageData = "") {
+  state.isAnalyzing = true;
+  renderView({ animate: false });
+
+  try {
+    const response = await fetch("/api/music-pet/recommendation", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        mode,
+        sceneId: mode,
+        photoHint: source === "photo" ? "photo-rain" : undefined,
+        imageData,
+        imageName: state.photoName,
+        petState: {
+          energy: currentGrowthMode().energy,
+          intimacy: currentGrowthMode().intimacy,
+          growth: currentGrowthMode().growth,
+          shards: currentGrowthMode().shards
+        }
+      })
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const plan = await response.json();
+    state.musicMode = plan.frontendMode || mode;
+    state.growthPlan = plan;
+    if (plan.songs?.[0]) {
+      state.currentSong = {
+        ...plan.songs[0],
+        sceneId: plan.moment?.sceneId || state.musicMode
+      };
+      state.playError = "";
+      state.toast = "";
+    }
+    fetchUserState();
+    if (source === "photo") navigateTo("photoresult");
+    if (source === "player") {
+      state.view = "player";
+    }
+  } catch {
+    state.growthPlan = null;
+  } finally {
+    state.isAnalyzing = false;
+    renderView({ animate: false });
+  }
+}
+
+async function fetchUserState() {
+  try {
+    const response = await fetch("/api/music-pet/state");
+    if (!response.ok) return;
+    state.petStore = await response.json();
+    renderView({ animate: false });
+  } catch {
+    // Preview can still run without persisted state.
+  }
+}
 
 /* ---------- Shared chrome ---------- */
 
@@ -51,7 +287,7 @@ function bottomNav(active) {
         <img src="${PIC}/视频 1.svg" alt="">
         <span>视频</span>
       </button>
-      <button type="button" class="center ${active === "scene" ? "active" : ""}" data-nav="scene" aria-label="在听">
+      <button type="button" class="center ${active === "chat" ? "active" : ""}" data-nav="chat" aria-label="对话">
         <img src="${PIC}/Ellipse 13219.svg" alt="">
         <img class="center-glyph" src="${PIC}/Icon.svg" alt="">
       </button>
@@ -59,7 +295,7 @@ function bottomNav(active) {
         <img src="${PIC}/交流 1.svg" alt="">
         <span>社区</span>
       </button>
-      <button type="button" data-nav="profile">
+      <button type="button" data-nav="profile" class="${active === "profile" ? "active" : ""}">
         <img src="${PIC}/我的 1.svg" alt="">
         <span>我的</span>
       </button>
@@ -68,13 +304,446 @@ function bottomNav(active) {
 }
 
 function miniPlayer() {
+  const mode = currentGrowthMode();
+  const song = state.currentSong;
   return `
     <button class="ai-mini-player" type="button" data-nav="player">
-      <img src="${PIC}/Mini Player/Cover.png" alt="">
-      <span><strong>晴天</strong><em>周杰伦</em></span>
-      <i class="mini-play" aria-hidden="true"></i>
+      <img src="${song?.coverUrl || `${PIC}/Mini Player/Cover.png`}" alt="">
+      <span><strong>${mode.song}</strong><em>${mode.artist} · ${mode.mood}</em></span>
+      <i class="mini-play ${state.isPlaying ? "playing" : ""}" aria-hidden="true"></i>
       <i class="mini-menu" aria-hidden="true"></i>
     </button>`;
+}
+
+function encodeSong(song, sceneId) {
+  return encodeURIComponent(JSON.stringify({
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    album: song.album || "",
+    bpm: song.bpm || 90,
+    coverUrl: song.coverUrl || "",
+    previewUrl: song.previewUrl || "",
+    sourcePreviewUrl: song.sourcePreviewUrl || "",
+    externalUrl: song.externalUrl || "",
+    platform: song.platform || "",
+    sceneId
+  }));
+}
+
+function readSongFromButton(button) {
+  if (button.dataset.songPayload) {
+    try {
+      return JSON.parse(decodeURIComponent(button.dataset.songPayload));
+    } catch {
+      // Fall through to legacy attributes.
+    }
+  }
+  return {
+    id: button.dataset.listenSong,
+    title: button.dataset.songTitle,
+    artist: button.dataset.songArtist,
+    sceneId: button.dataset.songScene,
+    previewUrl: button.dataset.songPreview || "",
+    sourcePreviewUrl: button.dataset.songSourcePreview || "",
+    coverUrl: button.dataset.songCover || ""
+  };
+}
+
+function formatTime(seconds) {
+  const value = Math.max(0, Math.floor(Number(seconds) || 0));
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
+}
+
+function updateAudioProgress() {
+  const duration = Number.isFinite(audioPlayer.duration) && audioPlayer.duration > 0
+    ? audioPlayer.duration
+    : 30;
+  state.audioDuration = duration;
+  state.audioCurrentTime = Number.isFinite(audioPlayer.currentTime) ? audioPlayer.currentTime : 0;
+  state.audioProgress = Math.max(0, Math.min(1, state.audioCurrentTime / duration));
+  if (state.view === "player" && !state.isSeeking) {
+    syncPlayerDom();
+  }
+}
+
+function primeAudioSource() {
+  const src = state.currentSong?.previewUrl;
+  if (!src) return;
+  const absoluteSrc = new URL(src, window.location.href).href;
+  if (audioPlayer.src !== absoluteSrc) {
+    audioPlayer.src = absoluteSrc;
+    audioPlayer.load();
+  }
+}
+
+function setupAudioAnalysis() {
+  if (!window.AudioContext && !window.webkitAudioContext) return null;
+  if (!audioContext) {
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    audioContext = new AudioContextCtor();
+  }
+  if (!audioSourceNode) {
+    audioSourceNode = audioContext.createMediaElementSource(audioPlayer);
+    audioAnalyser = audioContext.createAnalyser();
+    audioAnalyser.fftSize = 512;
+    audioAnalyser.smoothingTimeConstant = 0.72;
+    audioSourceNode.connect(audioAnalyser);
+    audioAnalyser.connect(audioContext.destination);
+    audioFrequencyData = new Uint8Array(audioAnalyser.frequencyBinCount);
+  }
+  return audioContext;
+}
+
+function startLiveRhythm() {
+  const context = setupAudioAnalysis();
+  if (!context || !audioAnalyser) return;
+  context.resume?.();
+  window.cancelAnimationFrame(audioRaf);
+
+  const tick = () => {
+    if (!state.isPlaying || !audioAnalyser) return;
+    audioAnalyser.getByteFrequencyData(audioFrequencyData);
+    const bassBins = audioFrequencyData.slice(0, 18);
+    const midBins = audioFrequencyData.slice(18, 72);
+    const bass = averageArray(bassBins) / 255;
+    const mid = averageArray(midBins) / 255;
+    const energy = Math.min(1, bass * 0.68 + mid * 0.32);
+    const now = performance.now();
+    const isBeat = energy > Math.max(0.34, state.liveEnergy + 0.1) && now - lastBeatAt > 180;
+    if (isBeat) lastBeatAt = now;
+    state.liveEnergy = state.liveEnergy * 0.72 + energy * 0.28;
+    state.liveBeat = isBeat ? 1 : Math.max(0, state.liveBeat * 0.86);
+    updateLivePetDom();
+    audioRaf = window.requestAnimationFrame(tick);
+  };
+
+  audioRaf = window.requestAnimationFrame(tick);
+}
+
+function stopLiveRhythm() {
+  window.cancelAnimationFrame(audioRaf);
+  state.liveEnergy = 0;
+  state.liveBeat = 0;
+  updateLivePetDom();
+}
+
+function averageArray(values) {
+  if (!values?.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function updateLivePetDom() {
+  const pet = screen.querySelector(".player-pet-companion");
+  const stage = screen.querySelector(".player-pet-stage");
+  if (!pet && !stage) return;
+  const lift = Math.round(4 + state.liveEnergy * 18 + state.liveBeat * 10);
+  const scale = (1 + state.liveEnergy * 0.09 + state.liveBeat * 0.08).toFixed(3);
+  const rotate = Math.round((state.liveBeat ? 1 : -1) * (2 + state.liveEnergy * 7));
+  [pet, stage].filter(Boolean).forEach((el) => {
+    el.style.setProperty("--live-lift", `${lift}px`);
+    el.style.setProperty("--live-scale", scale);
+    el.style.setProperty("--live-rotate", `${rotate}deg`);
+    el.style.setProperty("--live-bar-scale", (0.72 + state.liveEnergy * 0.7 + state.liveBeat * 0.35).toFixed(3));
+    el.classList.toggle("live-beat", state.liveBeat > 0.35);
+  });
+}
+
+function seekAudioFromEvent(event) {
+  const track = screen.querySelector("[data-seek-track]");
+  const duration = Number.isFinite(audioPlayer.duration) && audioPlayer.duration > 0
+    ? audioPlayer.duration
+    : state.audioDuration;
+  if (!track || !duration) return;
+  const rect = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  primeAudioSource();
+  audioPlayer.currentTime = ratio * duration;
+  updateAudioProgress();
+  syncPlayerDom();
+}
+
+function playbackErrorMessage(error) {
+  const message = String(error?.message || "");
+  if (/interact|gesture|allowed|play\(\) failed/i.test(message)) {
+    return "浏览器需要你再点一次播放键";
+  }
+  if (/supported source|format|decode|MEDIA_ERR_SRC_NOT_SUPPORTED/i.test(message)) {
+    return "试听源格式暂时不可用，已尝试备用源";
+  }
+  if (/network|fetch|load|404|403|cors/i.test(message)) {
+    return "试听源连接不稳定，请换一首试试";
+  }
+  return "试听暂时没有开始，请再点一次播放键";
+}
+
+function isPlaybackGestureError(error) {
+  return /interact|gesture|allowed|play\(\) failed/i.test(String(error?.message || ""));
+}
+
+async function playCurrentSong() {
+  const song = state.currentSong;
+  if (!song?.previewUrl) {
+    state.isPlaying = false;
+    state.playError = "这首歌没有可用试听片段";
+    renderView({ animate: false });
+    return;
+  }
+  state.playError = "";
+  try {
+    await playAudioSource(song.previewUrl);
+    state.isPlaying = true;
+  } catch (error) {
+    if (!isPlaybackGestureError(error) && song.sourcePreviewUrl && audioPlayer.src !== song.sourcePreviewUrl) {
+      try {
+        await playAudioSource(song.sourcePreviewUrl);
+        state.isPlaying = true;
+      } catch (fallbackError) {
+        state.isPlaying = false;
+        state.playError = playbackErrorMessage(fallbackError || error);
+      }
+    } else {
+      state.isPlaying = false;
+      state.playError = playbackErrorMessage(error);
+    }
+  }
+  renderView({ animate: false });
+}
+
+async function playAudioSource(src) {
+  const absoluteSrc = new URL(src, window.location.href).href;
+  if (audioPlayer.src !== absoluteSrc) {
+    audioPlayer.src = absoluteSrc;
+  }
+  await audioPlayer.play();
+  state.isPlaying = true;
+  startLiveRhythm();
+  updateAudioProgress();
+}
+
+function togglePlayback() {
+  if (state.isPlaying) {
+    audioPlayer.pause();
+    state.isPlaying = false;
+    stopLiveRhythm();
+    renderView({ animate: false });
+    return;
+  }
+  playCurrentSong();
+}
+
+function pickPlayableSong() {
+  const songs = state.growthPlan?.songs || [];
+  const song = songs.find((item) => item.previewUrl) || songs[0];
+  if (!song) return null;
+  return {
+    ...song,
+    sceneId: state.growthPlan?.moment?.sceneId || state.musicMode
+  };
+}
+
+function navigateTo(next, options = {}) {
+  if (!next || next === state.view) return;
+  if (next === "back") {
+    state.view = state.history.pop() || fallbackBackView(state.view);
+    renderView();
+    return;
+  }
+  if (options.push !== false) {
+    state.history.push(state.view);
+  }
+  if (next === "player" && !state.currentSong?.previewUrl) {
+    const playableSong = pickPlayableSong();
+    if (playableSong?.previewUrl) {
+      state.currentSong = playableSong;
+      state.playError = "";
+    } else {
+      state.toast = "正在加载可试听歌曲";
+      requestGrowthRecommendation(state.musicMode, "player");
+      return;
+    }
+  }
+  if (next === "player") {
+    primeAudioSource();
+  }
+  if (next === "analyze") {
+    state.view = "analyze";
+    requestGrowthRecommendation(state.musicMode);
+    return;
+  }
+  state.view = next;
+  renderView();
+}
+
+function fallbackBackView(view) {
+  return {
+    player: "home",
+    results: "scene",
+    photoresult: "home",
+    analyze: "scene",
+    recwheel: "results",
+    diary: "player",
+    diarylog: "diary",
+    profile: "home",
+    petskin: "profile",
+    tasks: "petskin",
+    chat: "home",
+    scene: "home"
+  }[view] || "home";
+}
+
+function paintToast() {
+  let el = screen.querySelector(".app-toast");
+  if (!state.toast) {
+    el?.remove();
+    return;
+  }
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "app-toast";
+    screen.appendChild(el);
+  }
+  el.textContent = state.toast;
+  requestAnimationFrame(() => el.classList.add("show"));
+}
+
+function showActionToast(message) {
+  state.toast = message;
+  state.equipMessage = message;
+  paintToast();
+  window.clearTimeout(showActionToast.timer);
+  showActionToast.timer = window.setTimeout(() => {
+    state.toast = "";
+    paintToast();
+  }, 1400);
+}
+
+function currentPlaylist() {
+  return state.growthPlan?.songs?.length ? state.growthPlan.songs : [];
+}
+
+function playSongFromState(song) {
+  if (!song) return;
+  state.currentSong = {
+    ...song,
+    sceneId: state.growthPlan?.moment?.sceneId || state.musicMode
+  };
+  state.playError = "";
+  renderView({ animate: false });
+  playCurrentSong();
+}
+
+function handlePlayerAction(action) {
+  const song = state.currentSong;
+  if (action === "prev" || action === "next") {
+    const songs = currentPlaylist();
+    if (!songs.length) {
+      showActionToast("暂无可切换歌曲");
+      return;
+    }
+    const currentIndex = Math.max(0, songs.findIndex((item) => item.id === song?.id));
+    const offset = action === "next" ? 1 : -1;
+    const nextIndex = (currentIndex + offset + songs.length) % songs.length;
+    playSongFromState(songs[nextIndex]);
+    return;
+  }
+
+  const actionMap = {
+    favorite: ["favorite", "已喜欢这首歌"],
+    collect: ["favorite", "已加入收藏"],
+    share: ["share", "已生成分享记录"],
+    detail: ["listen", song?.externalUrl ? "已打开歌曲详情" : "暂无外部详情"],
+    more: ["listen", "更多功能稍后开放"]
+  };
+  const [recordAction, message] = actionMap[action] || ["listen", "已记录"];
+
+  if (song?.externalUrl && action === "detail") {
+    window.open(song.externalUrl, "_blank", "noopener,noreferrer");
+  }
+
+  if (song?.id) {
+    fetch("/api/music-pet/listening-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        songId: song.id,
+        title: song.title,
+        artist: song.artist,
+        sceneId: song.sceneId || state.musicMode,
+        action: recordAction
+      })
+    }).catch(() => {});
+  }
+  showActionToast(message);
+}
+
+function renderGrowthMeter(label, value) {
+  return `
+    <div class="growth-meter">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      <i><b style="width:${Math.min(100, value)}%"></b></i>
+    </div>`;
+}
+
+function renderMusicGrowthPanel() {
+  const mode = currentGrowthMode();
+  const moment = state.growthPlan?.moment;
+  const providerText = state.growthPlan?.moment?.provider === "kimi-vision"
+    ? "Kimi 多模态识别"
+    : state.photoName
+      ? "本地照片策略识别"
+      : "听歌状态推断";
+  const modelError = moment?.modelError ? " · 模型回退" : "";
+  const profileText = state.growthPlan?.userProfile
+    ? `融合 ${state.growthPlan.userProfile.historySize} 条历史 · ${state.growthPlan.userProfile.likedTags.slice(0, 2).join("/")}`
+    : state.petStore?.userProfile
+      ? `融合 ${state.petStore.userProfile.historySize} 条历史 · ${state.petStore.userProfile.likedTags.slice(0, 2).join("/")}`
+      : "";
+  return `
+    <section class="music-growth-card" aria-label="音乐养成状态">
+      <header class="growth-head">
+        <span>今日养成</span>
+        <strong>${state.isAnalyzing ? "AI 正在理解此刻" : mode.mood}</strong>
+      </header>
+
+      <div class="growth-pet-stage">
+        <img class="growth-pet beat-${mode.rhythm}" style="--beat-speed:${mode.beatSpeed || 1}s;--beat-lift:${mode.beatLift || 6}px" src="${PIC}/${mode.petImg}" alt="音乐宠物动作">
+        <img class="growth-outfit" src="${PIC}/${mode.outfitImg}" alt="${mode.outfit}">
+        <span class="growth-bpm">${mode.bpm} BPM</span>
+      </div>
+
+      <div class="growth-copy">
+        <h3>${mode.title}</h3>
+        <p>${mode.speech}</p>
+        <small class="growth-source">${providerText}${modelError}${state.photoName ? ` · ${state.photoName}` : ""}</small>
+        ${profileText ? `<small class="growth-source profile">${profileText}</small>` : ""}
+        <div class="growth-tags">
+          ${mode.tags.map((tag) => `<span>${tag}</span>`).join("")}
+        </div>
+      </div>
+
+      <div class="growth-stats">
+        ${renderGrowthMeter("能量", mode.energy)}
+        ${renderGrowthMeter("亲密", mode.intimacy)}
+        ${renderGrowthMeter("成长", Math.round(mode.growth / 5))}
+      </div>
+
+      <div class="growth-unlock">
+        <span>当前装扮：${mode.outfit}</span>
+        <strong>${mode.aiReason || mode.unlock}</strong>
+      </div>
+
+      <div class="growth-modes" role="list" aria-label="切换听歌状态">
+        ${Object.entries(MUSIC_GROWTH_MODES).map(([id, item]) => `
+          <button class="${id === state.musicMode ? "active" : ""}" type="button" data-music-mode="${id}" role="listitem">
+            <span>${item.title}</span>
+            <em>${item.action}</em>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 /* Two big scene cards — shared by home and the scene-selection page */
@@ -123,6 +792,7 @@ function sceneCards() {
 /* ---------- Home (在听首页) ---------- */
 
 function renderHome() {
+  const mode = currentGrowthMode();
   return `
     <section class="ai-work-content" aria-label="AI参赛作品：在听首页">
       <div class="ai-work-frame" data-node-id="356:9307">
@@ -135,24 +805,29 @@ function renderHome() {
         </div>
 
         <section class="ai-hero">
-          <img class="ai-pet" src="${PIC}/33.png" alt="音乐宠物">
+          <img class="ai-pet beat-${mode.rhythm}" style="--beat-speed:${mode.beatSpeed || 1}s;--beat-lift:${mode.beatLift || 6}px" src="${PIC}/${mode.petImg}" alt="音乐宠物">
           <div class="ai-speech">
-            <p>嗨~<br>今天想听点什么<br>好音乐?</p>
+            <p>${mode.mood}<br>${mode.action}<br>${mode.bpm} BPM</p>
           </div>
           <button class="ai-pet-link" type="button" data-nav="profile">
             <strong>音乐宠物 〉</strong>
             <span>陪你发现此刻的好音乐</span>
+            <span>听歌会改变心情、动作和装扮</span>
+            <span>当前碎片 ${mode.shards} · 成长值 ${mode.growth}</span>
           </button>
         </section>
 
-        <button class="ai-photo-cta" type="button" data-nav="scene">
+        <button class="ai-photo-cta" type="button" data-ai-analyze="photo">
           <span class="ai-camera-box">
             <img src="${PIC}/拍照 1.svg" alt="">
           </span>
-          <strong>拍照推荐</strong>
-          <em>上传或拍照，为此刻推荐</em>
+          <strong>${state.photoName ? "重新识别照片" : "拍照推荐"}</strong>
+          <em>${state.photoName || "上传或拍照，为此刻推荐"}</em>
           <b>〉</b>
         </button>
+        <input class="photo-file-input" data-photo-input type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+
+        ${renderMusicGrowthPanel()}
 
         <section class="ai-scene-section">
           <header class="ai-section-title ai-scene-title">
@@ -173,13 +848,13 @@ function renderHome() {
           </header>
 
           <div class="ai-playlists">
-            <button class="playlist-card morning" type="button" data-toast="歌单功能即将上线 🎵">
+            <button class="playlist-card morning" type="button" data-music-mode="commute">
               <span></span><strong>清晨 · 元气</strong><em>32 首</em><b>▶</b>
             </button>
-            <button class="playlist-card relax" type="button" data-toast="歌单功能即将上线 🎵">
+            <button class="playlist-card relax" type="button" data-music-mode="heal">
               <span></span><strong>放松 · 治愈</strong><em>28 首</em><b>▶</b>
             </button>
-            <button class="playlist-card rain" type="button" data-toast="歌单功能即将上线 🎵">
+            <button class="playlist-card rain" type="button" data-music-mode="focus">
               <span></span><strong>雨天 · 安静</strong><em>30 首</em><b>▶</b>
             </button>
           </div>
@@ -191,6 +866,69 @@ function renderHome() {
     ${statusBar()}
     ${miniPlayer()}
     ${bottomNav("home")}
+  `;
+}
+
+function renderPhotoResult() {
+  const mode = currentGrowthMode();
+  const plan = state.growthPlan;
+  const moment = plan?.moment;
+  const songs = plan?.songs || [];
+  return `
+    <section class="ai-work-content" aria-label="拍照推荐结果">
+      <div class="photo-result-page">
+        <button class="results-back" type="button" data-nav="back" aria-label="返回">‹</button>
+        <h1 class="results-title">此刻音乐报告</h1>
+
+        <section class="pr-hero">
+          <div class="pr-photo">
+            ${state.photoPreview ? `<img src="${state.photoPreview}" alt="上传照片">` : `<span>PHOTO</span>`}
+          </div>
+          <div class="pr-summary">
+            <span>${moment?.provider === "kimi-vision" ? "Kimi 多模态" : "多模态回退"}</span>
+            <h2>${moment?.sceneLabel || mode.title}</h2>
+            <p>${moment?.emotion || mode.speech}</p>
+          </div>
+        </section>
+
+        <section class="pr-card pr-tags">
+          <strong>AI 识别到</strong>
+          <div>${(moment?.visualSignals || mode.tags).map((tag) => `<span>${tag}</span>`).join("")}</div>
+        </section>
+
+        <section class="pr-card pr-tags">
+          <strong>融合用户库</strong>
+          <div>${(plan?.userProfile?.likedTags || []).slice(0, 6).map((tag) => `<span>${tag}</span>`).join("")}</div>
+        </section>
+
+        <section class="pr-card pr-pet">
+          <img class="beat-${mode.rhythm}" style="--beat-speed:${mode.beatSpeed || 1}s;--beat-lift:${mode.beatLift || 6}px" src="${PIC}/${mode.petImg}" alt="">
+          <div>
+            <strong>${mode.mood} · ${mode.action}</strong>
+            <p>${mode.speech}</p>
+          </div>
+        </section>
+
+        <section class="pr-card pr-songs">
+          <strong>推荐歌单</strong>
+          ${songs.slice(0, 3).map((song, index) => `
+            <button type="button" data-listen-song="${song.id}" data-song-title="${song.title}" data-song-artist="${song.artist}" data-song-scene="${moment?.sceneId || state.musicMode}" data-song-payload="${encodeSong(song, moment?.sceneId || state.musicMode)}">
+              <b>${index + 1}</b>
+              <span>${song.title}<em>${song.artist} · ${song.bpm} BPM · ${song.matchReason}</em></span>
+            </button>
+          `).join("")}
+        </section>
+
+        <section class="pr-card pr-growth">
+          <strong>养成变化</strong>
+          <p>${plan?.pet?.growthExplanation || mode.unlock}</p>
+          <small>能量 ${mode.energy} · 亲密 ${mode.intimacy} · 成长 ${mode.growth}</small>
+        </section>
+      </div>
+    </section>
+    ${statusBar()}
+    ${miniPlayer()}
+    ${bottomNav("scene")}
   `;
 }
 
@@ -297,32 +1035,38 @@ function renderAnalyze() {
 const REC_MOODS = ["雨天", "安静", "治愈", "怀念", "放空"];
 
 const REC_SONGS = [
-  { title: "慢慢喜欢你", artist: "莫文蔚", cover: "#141f29", active: true },
-  { title: "想自由", artist: "林宥嘉", cover: "#5b6b6e" },
-  { title: "Everyday", artist: "Ariana Grande", cover: "#c98f7a" },
-  { title: "晴天", artist: "周杰伦", cover: "#7a93a8" },
-  { title: "小幸运", artist: "田馥甄", cover: "#d8a7b0" },
-  { title: "夜空中最亮的星", artist: "逃跑计划", cover: "#26354f" },
-  { title: "平凡之路", artist: "朴树", cover: "#8a8275" },
-  { title: "雨爱", artist: "杨丞琳", cover: "#6f7e8c" },
-  { title: "体面", artist: "于文文", cover: "#42505a" },
-  { title: "起风了", artist: "买辣椒也用券", cover: "#9ab0a0" }
+  { id: "fallback-slow-love", title: "慢慢喜欢你", artist: "莫文蔚", cover: "#141f29", active: true },
+  { id: "fallback-free", title: "想自由", artist: "林宥嘉", cover: "#bfcccc" },
+  { id: "fallback-everyday", title: "Everyday", artist: "Ariana Grande", cover: "#bfcccc" }
 ];
+
+function resultsSongs() {
+  const songs = state.growthPlan?.songs?.length ? state.growthPlan.songs : REC_SONGS;
+  return [...songs]
+    .sort((a, b) => Number(Boolean(b.previewUrl)) - Number(Boolean(a.previewUrl)))
+    .slice(0, 3);
+}
 
 function songRow(song, i) {
   const top = 451 + i * 58;
+  const sceneId = state.growthPlan?.moment?.sceneId || state.musicMode;
+  const playable = Boolean(song.previewUrl);
+  const coverStyle = song.coverUrl
+    ? `background-image:url('${song.coverUrl}');background-size:cover;background-position:center`
+    : `background:${song.cover || "#bfcccc"}`;
   return `
-    <div class="song-row" style="top:${top}px" data-nav="player">
-      <div class="song-cover" style="background:${song.cover}"></div>
+    <button class="song-row" type="button" style="top:${top}px" data-listen-song="${song.id}" data-song-title="${song.title}" data-song-artist="${song.artist}" data-song-scene="${sceneId}" data-song-payload="${encodeSong(song, sceneId)}">
+      <div class="song-cover" style="${coverStyle}"></div>
       <span class="song-title">${song.title}</span>
-      <span class="song-artist">${song.artist}</span>
-      ${song.active ? `<span class="song-play-active" aria-hidden="true"></span>` : `<span class="song-play" aria-hidden="true"></span>`}
+      <span class="song-artist">${song.artist}${playable ? "" : " · 暂无试听"}</span>
+      ${song.active || playable ? `<span class="song-play-active" aria-hidden="true"></span>` : `<span class="song-play" aria-hidden="true"></span>`}
       <span class="song-dots">...</span>
-    </div>`;
+    </button>`;
 }
 
 function renderResults() {
-  const listEnd = 451 + REC_SONGS.length * 58;
+  const songs = resultsSongs();
+  const listEnd = 451 + songs.length * 58;
   const mascotTop = listEnd + 8;
   const pageH = listEnd + 260;
   return `
@@ -347,7 +1091,7 @@ function renderResults() {
         <span class="results-rec-label">为你推荐</span>
         <button class="results-more-link" type="button" data-nav="recwheel">查看更多 〉</button>
 
-        ${REC_SONGS.map((s, i) => songRow(s, i)).join("")}
+        ${songs.map((s, i) => songRow(s, i)).join("")}
 
         <div class="results-mascot" style="top:${mascotTop}px"><img src="${PIC}/33.png" alt=""></div>
         <div class="results-bubble" style="top:${mascotTop - 8}px">
@@ -433,22 +1177,56 @@ function renderRecwheel() {
 /* ---------- 在线听 · 播放页 (听歌) ---------- */
 
 function renderPlayer() {
+  const mode = currentGrowthMode();
+  const song = state.currentSong || {
+    title: mode.song,
+    artist: mode.artist,
+    album: mode.mood,
+    coverUrl: `${PIC}/Change Image Here.png`,
+    bpm: mode.bpm,
+    previewUrl: ""
+  };
+  const statusText = state.playError || (song.previewUrl ? "30 秒试听片段" : "当前歌曲暂无试听链接");
+  const bpm = Math.round(song.bpm || mode.bpm || 88);
+  const energy = Math.max(0, Math.min(100, Math.round(song.energy ?? mode.energy ?? 60)));
+  const valence = Math.max(0, Math.min(100, Math.round(song.valence ?? mode.beatStrength ?? 58)));
+  const beatSpeed = Math.max(0.42, Math.min(2.2, 60 / Math.max(48, bpm))).toFixed(2);
+  const beatLift = Math.round(5 + energy / 9);
+  const beatBars = Array.from({ length: 18 }, (_, i) => {
+    const wave = Math.sin((i + 1) * 0.82 + bpm / 18);
+    const moodPush = (energy - 50) / 80 + (valence - 50) / 180;
+    const height = Math.max(16, Math.min(88, 40 + wave * 20 + moodPush * 36 + (i % 4 === 0 ? 12 : 0)));
+    return `<i style="height:${height.toFixed(0)}%;animation-delay:${(i * 0.045).toFixed(2)}s"></i>`;
+  }).join("");
   return `
     <section class="ai-work-content" aria-label="在线听">
       <div class="player-page" data-node-id="365:9693">
-        <div class="player-photo"><img src="${PIC}/Change Image Here.png" alt=""></div>
+        <div class="player-pet-stage beat-${mode.rhythm} ${state.isPlaying ? "is-playing" : ""}" style="--beat-speed:${beatSpeed}s;--beat-lift:${beatLift}px;--mood-energy:${energy};--mood-valence:${valence}">
+          <div class="stage-orbit one"></div>
+          <div class="stage-orbit two"></div>
+          <div class="stage-rhythm" aria-hidden="true">${beatBars}</div>
+          <div class="stage-pulse"></div>
+          <div class="player-pet-companion">
+            <img src="${PIC}/${mode.petImg}" alt="音乐小精灵">
+            <span>${mode.action}</span>
+          </div>
+          <div class="stage-mood">
+            <strong>${mode.mood}</strong>
+            <em>${bpm} BPM · 能量 ${energy}</em>
+          </div>
+        </div>
 
-        <button class="pa-btn pa-like" type="button" aria-label="喜欢">
+        <button class="pa-btn pa-like" type="button" data-player-action="favorite" aria-label="喜欢">
           <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M12 20.5S4.5 15.6 4.5 10.3A4.2 4.2 0 0 1 12 7.2 4.2 4.2 0 0 1 19.5 10.3C19.5 15.6 12 20.5 12 20.5z" fill="#0a0e0e"/></svg>
           <span class="cnt">999</span>
         </button>
-        <button class="pa-btn pa-plus" type="button" aria-label="收藏">
+        <button class="pa-btn pa-plus" type="button" data-player-action="collect" aria-label="收藏">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#0a0e0e" stroke-width="2.4" stroke-linecap="round"/></svg>
         </button>
-        <button class="pa-btn pa-share" type="button" aria-label="分享">
+        <button class="pa-btn pa-share" type="button" data-player-action="share" aria-label="分享">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 13h11M11 7l6 6-6 6" stroke="#0a0e0e" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <button class="pa-btn pa-more" type="button" aria-label="更多">
+        <button class="pa-btn pa-more" type="button" data-player-action="more" aria-label="更多">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="#0a0e0e"/><circle cx="12" cy="12" r="2" fill="#0a0e0e"/><circle cx="19" cy="12" r="2" fill="#0a0e0e"/></svg>
         </button>
 
@@ -457,7 +1235,7 @@ function renderPlayer() {
           <div class="player-artist"><img src="${PIC}/avatar.png" alt=""><span>周杰伦</span></div>
           <div class="player-desc">
             <p>Join the rhythm of the night with "Echoes…</p>
-            <span class="player-detail">查看详情</span>
+            <button class="player-detail" type="button" data-player-action="detail">查看详情</button>
           </div>
         </div>
 
@@ -465,18 +1243,18 @@ function renderPlayer() {
 
         <div class="player-media">
           <div class="player-progress">
-            <div class="player-track">
-              <div class="player-track-fill"></div>
-              <div class="player-knob"></div>
+            <div class="player-track" data-seek-track>
+              <div class="player-track-fill" style="width:${Math.round(state.audioProgress * 100)}%"></div>
+              <div class="player-knob" style="left:${Math.round(state.audioProgress * 100)}%"></div>
             </div>
-            <div class="player-time"><span>0:37</span><span>-3:14</span></div>
+            <div class="player-time"><span>${formatTime(state.audioCurrentTime)}</span><span>${state.playError || formatTime(state.audioDuration)}</span></div>
           </div>
           <div class="player-controls">
-            <button class="player-skip" type="button" aria-label="上一首">
+            <button class="player-skip" type="button" data-player-action="prev" aria-label="上一首">
               <svg viewBox="0 0 20 25" width="20" height="25" aria-hidden="true"><path d="M18 2 7 12.5 18 23Z" fill="#000"/><rect x="2" y="2" width="3.4" height="21" rx="1.5" fill="#000"/></svg>
             </button>
-            <button class="player-play" type="button" aria-label="播放"></button>
-            <button class="player-skip" type="button" aria-label="下一首">
+            <button class="player-play ${state.isPlaying ? "playing" : ""}" type="button" data-player-toggle aria-label="播放"></button>
+            <button class="player-skip" type="button" data-player-action="next" aria-label="下一首">
               <svg viewBox="0 0 20 25" width="20" height="25" aria-hidden="true"><path d="M2 2 13 12.5 2 23Z" fill="#000"/><rect x="14.6" y="2" width="3.4" height="21" rx="1.5" fill="#000"/></svg>
             </button>
           </div>
@@ -678,7 +1456,46 @@ const PF_PREFS = [["低噪", 43], ["治愈", 111], ["通勤", 179], ["晚间", 2
 const PF_ACH = [["🎵", "听歌达人", "var(--pastel-mint)"], ["🌙", "夜猫子", "var(--pastel-lilac)"], ["📖", "日记家", "var(--pastel-peach)"], ["🔥", "连续7天", "var(--pastel-sky)"]];
 const PF_RECENT = REC_SONGS.slice(0, 3);
 
+function profileStats() {
+  const store = state.petStore;
+  if (!store) return PF_STATS;
+  return [
+    [store.listeningHistory?.length || 0, "听歌记录", 79],
+    [store.recommendationRecords?.length || 0, "推荐记录", 179],
+    [Object.values(store.inventory?.outfits || {}).filter((item) => item.unlocked).length, "已解锁", 279]
+  ];
+}
+
+function renderProfileTags(tags = []) {
+  const safeTags = tags.length ? tags : PF_PREFS.map(([tag]) => tag);
+  return safeTags.slice(0, 6).map((tag) => `<span>${tag}</span>`).join("");
+}
+
+function renderHistoryRows(items = []) {
+  return items.slice(0, 4).map((item) => `
+    <button type="button" data-listen-song="${item.songId}" data-song-title="${item.title}" data-song-artist="${item.artist}" data-song-scene="${item.sceneId}">
+      <strong>${item.title}</strong>
+      <span>${item.artist} · ${item.action} · ${item.sceneId}</span>
+    </button>
+  `).join("");
+}
+
+function renderRecommendationRows(items = []) {
+  return items.slice(0, 3).map((item) => `
+    <div>
+      <strong>${item.frontendMode || "mode"} · ${item.petMood || "宠物状态"}</strong>
+      <span>${item.sceneId || "scene"} · ${item.topSongId || "song"} · ${new Date(item.createdAt).toLocaleDateString("zh-CN")}</span>
+    </div>
+  `).join("");
+}
+
 function renderProfile() {
+  const store = state.petStore;
+  const userProfile = store?.userProfile;
+  const stats = profileStats();
+  const likedTags = userProfile?.likedTags || PF_PREFS.map(([tag]) => tag);
+  const history = store?.listeningHistory || [];
+  const records = store?.recommendationRecords || [];
   return `
     <section class="ai-work-content" aria-label="我的在听档案">
       <div class="profile-page" data-node-id="389:9702" style="min-height:1102px">
@@ -688,34 +1505,36 @@ function renderProfile() {
         <div class="pf-header-block"></div>
         <img class="pf-pet" src="${PIC}/zhu 1.png" alt="音乐宠物">
         <h2 class="pf-greeting">小Q陪听第 28 天</h2>
-        <p class="pf-sub">你最常在夜晚听治愈、轻快和低噪人声。</p>
+        <p class="pf-sub">你最常听 ${likedTags.slice(0, 3).join("、")}，小Q会把这些偏好融合进每次推荐。</p>
 
         <div class="pf-card pf-stats-card"></div>
         <span class="pf-card-title pf-t1">本月数据</span>
-        ${PF_STATS.map(([n, l, c]) => `<span class="pf-stat-num" style="left:${c}px">${n}</span><span class="pf-stat-lbl" style="left:${c + 1}px">${l}</span>`).join("")}
+        ${stats.map(([n, l, c]) => `<span class="pf-stat-num" style="left:${c}px">${n}</span><span class="pf-stat-lbl" style="left:${c + 1}px">${l}</span>`).join("")}
 
         <div class="pf-card pf-pref-card"></div>
         <span class="pf-card-title pf-t2">偏好标签</span>
-        ${PF_PREFS.map(([t, l]) => `<span class="pf-pill" style="left:${l}px">${t}</span>`).join("")}
+        <div class="pf-tag-cloud">${renderProfileTags(likedTags)}</div>
 
         <div class="pf-card pf-pet-card"></div>
         <span class="pf-card-title pf-t3">宠物声音和陪伴方式</span>
-        <span class="pf-pet-sub">温柔提醒 · 每晚 21:30</span>
+        <span class="pf-pet-sub">${userProfile ? `${userProfile.timeBucket} · ${userProfile.timeTags.join(" / ")}` : "温柔提醒 · 每晚 21:30"}</span>
         <button class="pf-setting" type="button" data-nav="petskin">去设置</button>
 
-        <div class="pf-card pf-ach-card"></div>
-        <span class="pf-card-title pf-t4">成就徽章</span>
-        ${PF_ACH.map(([e, l, bg], i) => `<span class="pf-ach" style="left:${39 + i * 82}px"><b style="background:${bg}">${e}</b><em>${l}</em></span>`).join("")}
+        <section class="pf-library-card pf-fusion">
+          <header><strong>融合画像</strong><span>${userProfile?.historySize || 0} 条历史</span></header>
+          <div class="pf-chip-row">${renderProfileTags(userProfile?.favoriteArtists || [])}</div>
+          <p>推荐会综合常听歌手、喜欢标签、跳过记录、场景亲和度和当前时段。</p>
+        </section>
 
-        <div class="pf-card pf-recent-card"></div>
-        <span class="pf-card-title pf-t5">最近在听</span>
-        ${PF_RECENT.map((s, i) => `
-        <div class="pf-rec-row" style="top:${844 + i * 44}px" data-nav="player">
-          <span class="pf-rec-cover" style="background:${s.cover}"></span>
-          <strong class="pf-rec-title">${s.title}</strong>
-          <em class="pf-rec-artist">${s.artist}</em>
-          <span class="pf-rec-play" aria-hidden="true"></span>
-        </div>`).join("")}
+        <section class="pf-library-card pf-history">
+          <header><strong>最近听歌</strong><span>点击可记录播放</span></header>
+          <div class="pf-history-list">${renderHistoryRows(history)}</div>
+        </section>
+
+        <section class="pf-library-card pf-records">
+          <header><strong>推荐记录</strong><span>最近 3 次</span></header>
+          <div class="pf-record-list">${renderRecommendationRows(records)}</div>
+        </section>
       </div>
     </section>
 
@@ -765,11 +1584,19 @@ function renderSkinsBlock() {
     <span class="ps-group g1">基础款 ⌄</span>
     <span class="ps-group g2">特殊款 ⌄</span>
     ${SKINS.map(([src, l, t, name, nl, nt]) =>
-      `<div class="ps-skin${name === state.skinSel ? " sel" : ""}" style="left:${l}px;top:${t}px" data-skin="${name}"><img src="${PIC}/${src}" alt=""></div>` +
-      `<span class="ps-skin-name${name === state.skinSel ? " sel" : ""}" style="left:${nl}px;top:${nt}px">${name}</span>`
+      renderEquipSkin(src, l, t, name) +
+      `<span class="ps-skin-name" style="left:${nl}px;top:${nt}px">${name}</span>`
     ).join("")}
     <span class="ps-more">——更多装扮，正在上线中——</span>
   `;
+}
+
+function renderEquipSkin(src, l, t, name) {
+  const id = OUTFIT_IDS[name];
+  const item = id ? state.petStore?.inventory?.outfits?.[id] : null;
+  const locked = item && !item.unlocked;
+  const equipped = id && state.petStore?.pet?.equippedOutfit === id;
+  return `<button class="ps-skin ${locked ? "locked" : ""} ${equipped ? "equipped" : ""}" style="left:${l}px;top:${t}px" type="button" ${id ? `data-equip-kind="outfit" data-equip-id="${id}"` : ""}><img src="${PIC}/${src}" alt=""><span>${equipped ? "已装备" : locked ? "未解锁" : ""}</span></button>`;
 }
 
 function renderActionsBlock() {
@@ -783,15 +1610,29 @@ function renderActionsBlock() {
     ${[557, 692, 827].map((t) => `<i class="ps-act-divider" style="top:${t}px"></i>`).join("")}
     ${ACT_TIERS.map(([n, num, nt, vt]) => `<span class="ps-tier-name" style="top:${nt}px">${n}</span><span class="ps-tier-num" style="top:${vt}px">${num}</span>`).join("")}
     ${ACTIONS.map(([src, il, it, iw, ih, name, nl, nt]) =>
-      `<img class="ps-act-img" src="${PIC}/${src}" style="left:${il}px;top:${it}px;width:${iw}px;height:${ih}px" alt="" data-act="${name}">` +
+      renderEquipAction(src, il, it, iw, ih, name) +
       `<span class="ps-act-name" style="left:${nl}px;top:${nt}px">${name}</span>`
     ).join("")}
     <span class="ps-more ps-more-act">——更多动作，正在上线中——</span>
   `;
 }
 
+function renderEquipAction(src, il, it, iw, ih, name) {
+  const id = ACTION_IDS[name];
+  const item = id ? state.petStore?.inventory?.actions?.[id] : null;
+  const locked = item && !item.unlocked;
+  const equipped = id && state.petStore?.pet?.equippedAction === id;
+  return `<button class="ps-act-img ${locked ? "locked" : ""} ${equipped ? "equipped" : ""}" type="button" style="left:${il}px;top:${it}px;width:${iw}px;height:${ih}px" ${id ? `data-equip-kind="action" data-equip-id="${id}"` : ""}><img src="${PIC}/${src}" alt=""><span>${equipped ? "✓" : locked ? "锁" : ""}</span></button>`;
+}
+
 function renderPetskin() {
   const isAction = state.petTab === "action";
+  const pet = state.petStore?.pet;
+  const outfits = Object.values(state.petStore?.inventory?.outfits || {});
+  const actions = Object.values(state.petStore?.inventory?.actions || {});
+  const unlockedCount = outfits.filter((item) => item.unlocked).length + actions.filter((item) => item.unlocked).length;
+  const totalCount = outfits.length + actions.length || 25;
+  const intimacy = pet?.intimacy ?? 0;
   return `
     <section class="ai-work-content" aria-label="我的专属陪伴">
       <div class="petskin-page${isAction ? " is-action" : ""}" data-node-id="406:87">
@@ -803,18 +1644,19 @@ function renderPetskin() {
         <span class="ps-name">小玲团</span>
         <span class="ps-switch" data-toast="切换角色，敬请期待">切换角色</span>
         <span class="ps-intimacy">亲密度:</span>
-        <span class="ps-intimacy-val">0/500</span>
-        <span class="ps-improve" data-toast="亲密度提升玩法开发中">去提升 〉</span>
+        <span class="ps-intimacy-val">${intimacy}/100</span>
+        <span class="ps-improve">去提升 〉</span>
         <div class="ps-divider"></div>
         <p class="ps-desc1">小铃团会根据你听歌行为变化状态<br>不同耳机搭配不同性格表现</p>
         <p class="ps-desc2">解锁「装扮」和「动作」<br>打造你的专属音乐陪伴角色</p>
 
         <h2 class="ps-task-title">做任务解锁装扮/动作</h2>
-        <span class="ps-task-sub">已解锁25/25,点击即可以预览</span>
+        <span class="ps-task-sub">已解锁${unlockedCount}/${totalCount},点击已解锁项目即可装备</span>
         <span class="ps-task-link" data-nav="tasks">去做任务 〉</span>
 
         <span class="ps-tab left ${isAction ? "off" : "on"}" data-pettab="skin">装扮</span>
         <span class="ps-tab right ${isAction ? "on" : "off"}" data-pettab="action">动作</span>
+        <span class="ps-equip-msg">${state.equipMessage || "点击已解锁项目即可装备"}</span>
 
         ${isAction ? renderActionsBlock() : renderSkinsBlock()}
       </div>
@@ -878,6 +1720,220 @@ function renderTasks() {
 }
 
 /* ---------- 社区（复用日记信息流） ---------- */
+
+/* ---------- 小宠物对话 ---------- */
+
+function renderChatMessages() {
+  return state.chatMessages.map((message) => `
+    <div class="chat-msg ${message.role}">
+      ${message.role === "pet" ? `<img src="${PIC}/${currentGrowthMode().petImg}" alt="">` : ""}
+      ${message.type === "song" ? renderChatSongMessage(message) : `<p>${message.text}</p>`}
+    </div>
+  `).join("");
+}
+
+function renderChatSongMessage(message) {
+  const song = message.song;
+  if (!song) return `<p>${message.text || "我给你找了一首歌。"}</p>`;
+  const playable = Boolean(song.previewUrl);
+  const coverStyle = song.coverUrl
+    ? `background-image:url('${song.coverUrl}');background-size:cover;background-position:center`
+    : "background:#d9e8e0";
+  return `
+    <div class="chat-song-card">
+      <button class="chat-song-main" type="button" data-listen-song="${song.id}" data-song-title="${song.title}" data-song-artist="${song.artist}" data-song-scene="${song.sceneId || state.musicMode}" data-song-payload="${encodeSong(song, song.sceneId || state.musicMode)}">
+        <span class="chat-song-cover" style="${coverStyle}"></span>
+        <span class="chat-song-meta">
+          <strong>${song.title}</strong>
+          <em>${song.artist}${song.bpm ? ` · ${Math.round(song.bpm)} BPM` : ""}</em>
+        </span>
+        <i class="chat-song-play" aria-hidden="true"></i>
+      </button>
+      <span class="chat-song-note">${playable ? "点一下直接听" : "这首没有试听，会自动切到可听版本"}</span>
+    </div>`;
+}
+
+function shouldAttachChatSong(text) {
+  return /推荐|换歌|歌单|听什么|听歌|来一首|路上|通勤|地铁|公交|走路|累|难过|烦|焦虑|压力|不开心|孤单|放松|安静/.test(text);
+}
+
+function pickChatRecommendation(text) {
+  const songs = [
+    ...(state.growthPlan?.songs || []),
+    state.currentSong
+  ].filter(Boolean);
+  const unique = [];
+  const seen = new Set();
+  for (const song of songs) {
+    const key = song.id || `${song.title}-${song.artist}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(song);
+    }
+  }
+  const playable = unique.find((song) => song.previewUrl) || pickPlayableSong();
+  const chosen = playable || unique[0];
+  if (!chosen) return null;
+  return {
+    ...chosen,
+    sceneId: chosen.sceneId || state.growthPlan?.moment?.sceneId || state.musicMode
+  };
+}
+
+async function resolveChatRecommendation(text) {
+  const existing = pickChatRecommendation(text);
+  if (existing) return existing;
+  try {
+    const response = await fetch("/api/music-pet/recommendation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: state.musicMode,
+        sceneId: state.musicMode,
+        message: text,
+        petState: {
+          energy: currentGrowthMode().energy,
+          intimacy: currentGrowthMode().intimacy,
+          growth: currentGrowthMode().growth,
+          shards: currentGrowthMode().shards
+        }
+      })
+    });
+    if (!response.ok) throw new Error("recommendation_failed");
+    const plan = await response.json();
+    state.musicMode = plan.frontendMode || state.musicMode;
+    state.growthPlan = plan;
+    if (plan.songs?.[0]) {
+      state.currentSong = {
+        ...plan.songs[0],
+        sceneId: plan.moment?.sceneId || state.musicMode
+      };
+    }
+    return pickChatRecommendation(text);
+  } catch {
+    return pickChatRecommendation(text);
+  }
+}
+
+function trimChatMessages() {
+  state.chatMessages = state.chatMessages.slice(-12);
+}
+
+function buildPetChatReply(text) {
+  const mode = currentGrowthMode();
+  const song = state.currentSong || { title: mode.song, artist: mode.artist };
+  if (/照片|拍照|图片|图像/.test(text)) {
+    return `可以，把照片给我后，我会先看画面情绪，再结合你最近爱听的 ${mode.tags.join("、")}，找一组更贴近当下的歌。`;
+  }
+  if (/通勤|路上|地铁|公交/.test(text)) {
+    return `路上我会陪你用「${mode.action}」的动作听歌。现在这首《${song.title}》节奏大概 ${mode.bpm} BPM，我会跟着鼓点轻轻动。`;
+  }
+  if (/难过|累|冷|烦|焦虑|压力/.test(text)) {
+    return `我听见啦。先不急着变快乐，我陪你把音乐放柔一点。可以从《${song.title}》开始，慢慢把情绪放下来。`;
+  }
+  return `我会记住你刚刚说的状态，再结合正在听的《${song.title}》和最近偏好，给你更像朋友说话的推荐理由。`;
+}
+
+async function sendChatMessage(text) {
+  const value = String(text || "").trim();
+  if (!value) return;
+  state.chatMessages.push({ role: "user", text: value });
+  state.chatMessages.push({ role: "pet", text: "我听到了，正在给你挑一首现在能接住情绪的歌。" });
+  trimChatMessages();
+  renderView({ animate: false });
+  try {
+    const mode = currentGrowthMode();
+    const song = state.currentSong || {
+      title: mode.song,
+      artist: mode.artist,
+      bpm: mode.bpm,
+      energy: mode.energy
+    };
+    const response = await fetch("/api/music-pet/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: value,
+        song,
+        mode,
+        recentMessages: state.chatMessages.slice(-8)
+      })
+    });
+    if (!response.ok) throw new Error("chat_failed");
+    const data = await response.json();
+    const recommendedSong = shouldAttachChatSong(value) ? await resolveChatRecommendation(value) : null;
+    state.chatMessages[state.chatMessages.length - 1] = {
+      role: "pet",
+      text: data.reply || buildPetChatReply(value)
+    };
+    if (recommendedSong) {
+      state.chatMessages.push({
+        role: "pet",
+        type: "song",
+        text: `推荐 ${recommendedSong.title}`,
+        song: recommendedSong
+      });
+    }
+  } catch {
+    const recommendedSong = shouldAttachChatSong(value) ? await resolveChatRecommendation(value) : null;
+    state.chatMessages[state.chatMessages.length - 1] = {
+      role: "pet",
+      text: buildPetChatReply(value)
+    };
+    if (recommendedSong) {
+      state.chatMessages.push({
+        role: "pet",
+        type: "song",
+        text: `推荐 ${recommendedSong.title}`,
+        song: recommendedSong
+      });
+    }
+  }
+  trimChatMessages();
+  renderView({ animate: false });
+}
+
+function renderChat() {
+  const mode = currentGrowthMode();
+  const song = state.currentSong || { title: mode.song, artist: mode.artist };
+  return `
+    <section class="ai-work-content" aria-label="小宠物对话">
+      <div class="chat-page">
+        <h1 class="results-title">对话</h1>
+        <button class="results-more" type="button" aria-label="更多" data-toast="对话设置稍后开放">...</button>
+
+        <section class="chat-hero">
+          <div class="chat-pet-stage beat-${mode.rhythm} ${state.isPlaying ? "is-playing" : ""}" style="--beat-speed:${mode.beatSpeed || 1}s;--beat-lift:${mode.beatLift || 6}px">
+            <img src="${PIC}/${mode.petImg}" alt="音乐小宠物">
+            <span>${mode.action}</span>
+          </div>
+          <div class="chat-state">
+            <strong>${mode.mood}</strong>
+            <em>正在理解：${song.title} · ${mode.bpm} BPM</em>
+          </div>
+        </section>
+
+        <div class="chat-log">
+          ${renderChatMessages()}
+        </div>
+
+        <div class="chat-prompts">
+          <button type="button" data-chat-prompt="我今天通勤有点累，想听慢一点的">通勤有点累</button>
+          <button type="button" data-chat-prompt="根据我现在这首歌，换一个适合的动作">换个动作</button>
+          <button type="button" data-chat-prompt="我发照片后你怎么推荐歌">照片推荐</button>
+        </div>
+
+        <form class="chat-compose" data-chat-form>
+          <input class="chat-input" name="message" type="text" placeholder="和小宠物说说你的心情">
+          <button type="submit" aria-label="发送">发送</button>
+        </form>
+      </div>
+    </section>
+
+    ${statusBar()}
+    ${bottomNav("chat")}
+  `;
+}
 
 function renderCommunity() {
   return `
@@ -943,62 +1999,10 @@ function renderVideo() {
 
 /* ---------- Router ---------- */
 
-const views = { home: renderHome, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile, petskin: renderPetskin, tasks: renderTasks, community: renderCommunity, video: renderVideo };
+const views = { home: renderHome, photoresult: renderPhotoResult, scene: renderScene, analyze: renderAnalyze, results: renderResults, recwheel: renderRecwheel, player: renderPlayer, diary: renderDiary, diarylog: renderDiaryLog, profile: renderProfile, petskin: renderPetskin, tasks: renderTasks, chat: renderChat, community: renderCommunity, video: renderVideo };
 
 let analyzeTimer;
-
 const ENTER_CLASS = { forward: "view-enter-forward", back: "view-enter-back", fade: "view-enter-fade" };
-
-/* ---------- 模拟播放引擎 ---------- */
-
-let playerTimer;
-
-function fmtTime(sec) {
-  const s = Math.max(0, Math.round(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-}
-
-/* 把当前播放状态画到现有 DOM（迷你播放器跨页都在，播放页仅当前页有） */
-function paintPlayer() {
-  const p = state.player;
-  document.querySelectorAll(".ai-mini-player, .rec-mini").forEach((mp) => mp.classList.toggle("is-playing", p.playing));
-
-  const fill = document.querySelector(".player-track-fill");
-  if (fill) {
-    const w = fill.parentElement.clientWidth;
-    fill.style.width = `${p.progress * w}px`;
-    const knob = document.querySelector(".player-knob");
-    if (knob) knob.style.left = `${p.progress * w}px`;
-    const times = document.querySelectorAll(".player-time span");
-    if (times.length === 2) {
-      const elapsed = p.progress * p.dur;
-      times[0].textContent = fmtTime(elapsed);
-      times[1].textContent = `-${fmtTime(p.dur - elapsed)}`;
-    }
-    const btn = document.querySelector(".player-play");
-    if (btn) btn.classList.toggle("paused", !p.playing);
-  }
-}
-
-/* 进度计时只在播放页运行（离开即清除），避免常驻 DOM 改写干扰截图 */
-function syncPlayerTimer() {
-  clearInterval(playerTimer);
-  if (state.view === "player") {
-    playerTimer = setInterval(() => {
-      if (!state.player.playing) return;
-      state.player.progress += 0.25 / state.player.dur;
-      if (state.player.progress >= 1) state.player.progress = 0;
-      paintPlayer();
-    }, 250);
-  }
-}
-
-function togglePlay() {
-  state.player.playing = !state.player.playing;
-  paintPlayer();
-}
-
-/* ---------- Toast（给“点了没目的页”的入口兜底反馈） ---------- */
 
 function bouncePet(selector) {
   const pet = screen.querySelector(selector);
@@ -1009,24 +2013,9 @@ function bouncePet(selector) {
   pet.addEventListener("animationend", () => pet.classList.remove("pet-react"), { once: true });
 }
 
-let toastTimer;
-
 function toast(msg) {
-  const host = document.querySelector(".app-container") || document.body;
-  let el = host.querySelector(".app-toast");
-  if (!el) {
-    el = document.createElement("div");
-    el.className = "app-toast";
-    host.appendChild(el);
-  }
-  el.textContent = msg;
-  void el.offsetWidth;
-  el.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
+  showActionToast(msg);
 }
-
-/* ---------- 滚动入场（卡片随滚动淡入上移；纯增强，JS 缺失不影响可见性） ---------- */
 
 const REVEAL_SELECTOR = ".ps-skin, .ps-act-card, .ps-act-img, .tk-card, .dl-card, .pf-card, .feed-card, .feed-preview, .playlist-card";
 let revealObserver;
@@ -1051,16 +2040,62 @@ function setupReveal(content) {
   targets.forEach((el) => revealObserver.observe(el));
 }
 
-function renderView() {
+function syncPlayerDom() {
+  if (state.view !== "player") return;
+  const mode = currentGrowthMode();
+  const song = state.currentSong || {
+    title: mode.song,
+    artist: mode.artist,
+    album: mode.mood,
+    coverUrl: `${PIC}/Change Image Here.png`,
+    previewUrl: ""
+  };
+  const statusText = state.playError || (song.previewUrl ? "30 秒试听片段" : "当前歌曲暂无试听链接");
+  const title = screen.querySelector(".player-info h2");
+  const artist = screen.querySelector(".player-artist span");
+  const desc = screen.querySelector(".player-desc p");
+  const cover = screen.querySelector(".player-photo img");
+  const times = screen.querySelectorAll(".player-time span");
+  const fill = screen.querySelector(".player-track-fill");
+  const knob = screen.querySelector(".player-knob");
+  if (title) title.textContent = song.title;
+  if (artist) artist.textContent = song.artist;
+  if (desc) desc.textContent = song.album || statusText;
+  if (cover) cover.src = song.coverUrl || `${PIC}/Change Image Here.png`;
+  if (fill) fill.style.width = `${Math.round(state.audioProgress * 100)}%`;
+  if (knob) knob.style.left = `${Math.round(state.audioProgress * 100)}%`;
+  if (times[0]) times[0].textContent = formatTime(state.audioCurrentTime);
+  if (times[1]) times[1].textContent = state.playError || formatTime(state.audioDuration);
+  updateLivePetDom();
+}
+
+function syncChatScroll() {
+  if (state.view !== "chat") return;
+  const content = screen.querySelector(".ai-work-content");
+  const log = screen.querySelector(".chat-log");
+  if (!content || !log) return;
+  const scrollToLatest = () => {
+    content.scrollTop = content.scrollHeight;
+    log.lastElementChild?.scrollIntoView({ block: "end" });
+  };
+  scrollToLatest();
+  requestAnimationFrame(scrollToLatest);
+}
+
+function renderView(options = {}) {
+  const animate = options.animate !== false;
   clearTimeout(analyzeTimer);
   screen.innerHTML = views[state.view]();
   const content = screen.querySelector(".ai-work-content");
   if (content) {
-    content.scrollTop = 0;
-    content.classList.add(ENTER_CLASS[state.navDir] || ENTER_CLASS.forward);
+    content.scrollTop = state.view === "chat" ? content.scrollHeight : 0;
+    if (animate) {
+      content.classList.add(ENTER_CLASS[state.navDir] || ENTER_CLASS.forward);
+    }
   }
-  paintPlayer();
-  syncPlayerTimer();
+  paintToast();
+  syncPlayerDom();
+  syncChatScroll();
   setupReveal(content);
   saveState();
 
@@ -1068,9 +2103,7 @@ function renderView() {
   if (state.view === "analyze") {
     analyzeTimer = setTimeout(() => {
       if (state.view === "analyze") {
-        state.navDir = "forward";
-        state.view = "results";
-        renderView();
+        navigateTo("results", { push: false });
       }
     }, 2400);
   }
@@ -1095,37 +2128,90 @@ function applyDevice() {
 }
 
 document.addEventListener("click", (event) => {
+  const playerToggleEl = event.target.closest("[data-player-toggle]");
+  if (playerToggleEl && screen.contains(playerToggleEl)) {
+    togglePlayback();
+    return;
+  }
+
+  const playerActionEl = event.target.closest("[data-player-action]");
+  if (playerActionEl && screen.contains(playerActionEl)) {
+    handlePlayerAction(playerActionEl.dataset.playerAction);
+    return;
+  }
+
+  const photoAnalyzeEl = event.target.closest("[data-ai-analyze='photo']");
+  if (photoAnalyzeEl && screen.contains(photoAnalyzeEl)) {
+    screen.querySelector("[data-photo-input]")?.click();
+    return;
+  }
+
+  const musicModeEl = event.target.closest("[data-music-mode]");
+  if (musicModeEl && screen.contains(musicModeEl)) {
+    state.musicMode = musicModeEl.dataset.musicMode;
+    state.growthPlan = null;
+    requestGrowthRecommendation(state.musicMode);
+    return;
+  }
+
+  const listenEl = event.target.closest("[data-listen-song]");
+  if (listenEl && screen.contains(listenEl)) {
+    const song = readSongFromButton(listenEl);
+    const playableFallback = pickPlayableSong();
+    state.currentSong = song.previewUrl ? song : playableFallback || song;
+    state.playError = song.previewUrl ? "" : "这首歌没有可用试听片段，已为你切到可试听歌曲";
+    fetch("/api/music-pet/listening-events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        songId: state.currentSong.id,
+        title: state.currentSong.title,
+        artist: state.currentSong.artist,
+        sceneId: state.currentSong.sceneId,
+        action: "listen"
+      })
+    }).catch(() => {});
+    navigateTo("player");
+    primeAudioSource();
+    return;
+  }
+
+  const equipEl = event.target.closest("[data-equip-kind]");
+  if (equipEl && screen.contains(equipEl)) {
+    fetch("/api/music-pet/equip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: equipEl.dataset.equipKind,
+        id: equipEl.dataset.equipId
+      })
+    })
+      .then(async (response) => {
+        if (response.ok) {
+          state.equipMessage = "???????/??";
+          await fetchUserState();
+        } else {
+          const data = await response.json().catch(() => ({}));
+          state.equipMessage = data.message || "?????????";
+          renderView({ animate: false });
+        }
+      })
+      .catch(() => {
+        state.equipMessage = "?????????";
+        renderView({ animate: false });
+      });
+    return;
+  }
+
   const petEl = event.target.closest(".ai-pet, .pf-pet, .tk-pet, .ps-pet, .analyze-pet");
   if (petEl && screen.contains(petEl)) {
     petEl.classList.remove("pet-react");
-    void petEl.offsetWidth; /* restart the animation */
+    void petEl.offsetWidth;
     petEl.classList.add("pet-react");
     petEl.addEventListener("animationend", () => petEl.classList.remove("pet-react"), { once: true });
     return;
   }
 
-  /* 专属陪伴·选皮肤：选中态 + 宠物开心反应 + toast */
-  const skinEl = event.target.closest(".ps-skin[data-skin]");
-  if (skinEl && screen.contains(skinEl)) {
-    const name = skinEl.dataset.skin;
-    state.skinSel = name;
-    screen.querySelectorAll(".ps-skin.sel, .ps-skin-name.sel").forEach((e) => e.classList.remove("sel"));
-    skinEl.classList.add("sel");
-    skinEl.nextElementSibling && skinEl.nextElementSibling.classList.add("sel");
-    bouncePet(".ps-pet");
-    toast(`已切换皮肤：${name} 🎧`);
-    return;
-  }
-
-  /* 专属陪伴·动作：宠物表演该动作 */
-  const actEl = event.target.closest(".ps-act-img[data-act]");
-  if (actEl && screen.contains(actEl)) {
-    bouncePet(".ps-pet");
-    toast(`小Q 正在「${actEl.dataset.act}」`);
-    return;
-  }
-
-  /* 日记创作：选情绪 */
   const emoEl = event.target.closest(".dc-chip[data-emotion]");
   if (emoEl && screen.contains(emoEl)) {
     state.diaryEmotion = Number(emoEl.dataset.emotion);
@@ -1133,7 +2219,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  /* 日记创作：选音乐风格 */
   const styEl = event.target.closest(".dc-style[data-style]");
   if (styEl && screen.contains(styEl)) {
     state.diaryStyle = Number(styEl.dataset.style);
@@ -1141,7 +2226,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  /* 日记创作：高级选项折叠 */
   const advEl = event.target.closest("[data-advtoggle]");
   if (advEl && screen.contains(advEl)) {
     state.diaryAdvOpen = !state.diaryAdvOpen;
@@ -1151,26 +2235,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  /* 迷你播放器上的播放小三角：切换播放，不触发跳转 */
-  if (event.target.closest(".mini-play")) {
-    togglePlay();
-    return;
-  }
-
-  /* 播放页大播放键 */
-  if (event.target.closest(".player-play")) {
-    togglePlay();
-    return;
-  }
-
-  /* 上/下一首：重置进度（占位反馈） */
-  if (event.target.closest(".player-skip")) {
-    state.player.progress = 0;
-    paintPlayer();
-    return;
-  }
-
-  /* 任务卡：点击未完成任务 → 勾选动画 + 进度推进 + 宠物反应 */
   const taskEl = event.target.closest("[data-task]");
   if (taskEl && screen.contains(taskEl)) {
     const i = Number(taskEl.dataset.task);
@@ -1181,7 +2245,7 @@ document.addEventListener("click", (event) => {
       const chk = screen.querySelectorAll(".tk-check")[i];
       if (chk) {
         chk.classList.add("done");
-        chk.textContent = "✓";
+        chk.textContent = "?";
         chk.classList.remove("pop");
         void chk.offsetWidth;
         chk.classList.add("pop");
@@ -1190,26 +2254,19 @@ document.addEventListener("click", (event) => {
       if (ratio) ratio.textContent = `${taskDoneCount()} / ${state.taskTotal}`;
       const fill = screen.querySelector(".tk-prog-fill");
       if (fill) fill.style.width = `${(taskDoneCount() / state.taskTotal * 176).toFixed(1)}px`;
-      const pet = screen.querySelector(".tk-pet");
-      if (pet) {
-        pet.classList.remove("pet-react");
-        void pet.offsetWidth;
-        pet.classList.add("pet-react");
-        pet.addEventListener("animationend", () => pet.classList.remove("pet-react"), { once: true });
-      }
-      toast("任务完成，小Q更开心了 🎉");
+      bouncePet(".tk-pet");
+      toast("????????????");
     }
     return;
   }
 
-  /* 日记公开 / 私人开关 */
   const toggleEl = event.target.closest("[data-toggle]");
   if (toggleEl && screen.contains(toggleEl)) {
     state.diaryPublic = toggleEl.dataset.toggle === "public";
     screen.querySelectorAll(".diary-toggle").forEach((el) => {
       el.classList.toggle("active", el.dataset.toggle === (state.diaryPublic ? "public" : "private"));
     });
-    toast(state.diaryPublic ? "已设为公开，将出现在社区" : "已设为私人，仅自己可见");
+    toast(state.diaryPublic ? "????????????" : "???????????");
     return;
   }
 
@@ -1219,29 +2276,46 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const chatPromptEl = event.target.closest("[data-chat-prompt]");
+  if (chatPromptEl && screen.contains(chatPromptEl)) {
+    sendChatMessage(chatPromptEl.dataset.chatPrompt);
+    return;
+  }
+
   const petTabEl = event.target.closest("[data-pettab]");
   if (petTabEl && screen.contains(petTabEl)) {
     if (state.petTab !== petTabEl.dataset.pettab) {
       state.petTab = petTabEl.dataset.pettab;
       state.navDir = "fade";
-      renderView();
+      renderView({ animate: false });
     }
     return;
   }
 
   const navEl = event.target.closest("[data-nav]");
-  if (navEl && screen.contains(navEl)) {
-    let next = navEl.dataset.nav;
-    if (next === "back") {
-      state.navDir = "back";
-      next = state.history.pop() || "home";
-    } else {
-      if (next === state.view) return;
-      state.navDir = "forward";
-      state.history.push(state.view);
-    }
-    state.view = next;
-    renderView();
+  if (navEl && (screen.contains(navEl) || document.querySelector(".ai-bottom-nav")?.contains(navEl))) {
+    navigateTo(navEl.dataset.nav);
+    return;
+  }
+
+  const sceneTabEl = event.target.closest(".scene-tab");
+  if (sceneTabEl && screen.contains(sceneTabEl)) {
+    screen.querySelectorAll(".scene-tab").forEach((tab) => tab.classList.remove("active"));
+    sceneTabEl.classList.add("active");
+    showActionToast(`已切换到 ${sceneTabEl.textContent.trim()}`);
+    return;
+  }
+
+  const cameraEl = event.target.closest(".scene-prompt-cam");
+  if (cameraEl && screen.contains(cameraEl)) {
+    navigateTo("home");
+    window.setTimeout(() => screen.querySelector("[data-photo-input]")?.click(), 0);
+    return;
+  }
+
+  const moreEl = event.target.closest(".results-more, .scene-more, .ai-more-note, .ai-recommend-title > button, .results-edit, .diary-fab");
+  if (moreEl && screen.contains(moreEl)) {
+    showActionToast("功能已响应，稍后接入完整面板");
     return;
   }
 
@@ -1272,6 +2346,61 @@ document.addEventListener("click", (event) => {
   }
 });
 
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const navEl = event.target.closest("[data-nav]");
+  if (navEl && screen.contains(navEl)) {
+    event.preventDefault();
+    navigateTo(navEl.dataset.nav);
+  }
+});
+
+document.addEventListener("pointerdown", (event) => {
+  const seekTrack = event.target.closest("[data-seek-track]");
+  if (!seekTrack || !screen.contains(seekTrack)) return;
+  state.isSeeking = true;
+  seekTrack.setPointerCapture?.(event.pointerId);
+  seekAudioFromEvent(event);
+});
+
+document.addEventListener("pointermove", (event) => {
+  if (!state.isSeeking) return;
+  seekAudioFromEvent(event);
+});
+
+document.addEventListener("pointerup", () => {
+  state.isSeeking = false;
+});
+
+document.addEventListener("pointercancel", () => {
+  state.isSeeking = false;
+});
+
+document.addEventListener("change", (event) => {
+  const input = event.target.closest("[data-photo-input]");
+  if (!input || !screen.contains(input)) return;
+
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    state.musicMode = "heal";
+    state.photoName = file.name;
+    state.photoPreview = String(reader.result || "");
+    requestGrowthRecommendation("heal", "photo", state.photoPreview);
+  });
+  reader.readAsDataURL(file);
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target.closest("[data-chat-form]");
+  if (!form || !screen.contains(form)) return;
+  event.preventDefault();
+  const input = form.querySelector(".chat-input");
+  sendChatMessage(input?.value || "");
+});
+
 document.querySelector("#brightness").addEventListener("input", (event) => {
   state.brightness = Number(event.target.value);
   document.querySelector("#brightnessValue").textContent = `${state.brightness}%`;
@@ -1300,7 +2429,7 @@ document.addEventListener("click", (event) => {
   if (m === state.sceneMood) return;
   state.sceneMood = m;
   state.navDir = "fade";
-  renderView();
+  renderView({ animate: false });
 });
 
 /* ---------- 轻量持久化（刷新/演示可续） ---------- */
@@ -1332,3 +2461,4 @@ function loadState() {
 loadState();
 applyDevice();
 renderView();
+fetchUserState();

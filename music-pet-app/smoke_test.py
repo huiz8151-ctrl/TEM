@@ -31,8 +31,16 @@ def main():
         [
             'iphone16: { name: "iPhone 16", width: 393, height: 852',
             'iphone16pro: { name: "iPhone 16 Pro", width: 402, height: 874',
-            "renderAiCompetitionHome",
-            'data-node-id="365:9308"',
+            "MUSIC_GROWTH_MODES",
+            "renderMusicGrowthPanel",
+            "requestGrowthRecommendation",
+            "renderPhotoResult",
+            "data-listen-song",
+            "data-equip-kind",
+            "融合用户库",
+            "运动提神",
+            "开心转圈",
+            "音乐养成状态",
             "ai-scene-section",
             "ai-scene-track",
             "ai-mini-player",
@@ -40,7 +48,7 @@ def main():
             "拍照推荐",
             "场景选择",
             "晴天",
-            "为此刻推荐",
+            "律动",
         ],
     )
     assert_contains(
@@ -53,12 +61,41 @@ def main():
             ".iphone-body",
             ".app-container",
             ".ai-work-frame",
+            ".music-growth-card",
+            ".growth-modes",
+            ".beat-bounce",
+            ".photo-result-page",
+            ".pr-songs",
             ".ai-scene-section",
             ".ai-scene-track",
             ".ai-photo-cta",
             ".ai-mini-player",
             ".ai-bottom-nav",
             ".ai-playlists",
+        ],
+    )
+    assert_contains(
+        "server",
+        (ROOT / "dev-server.mjs").read_text(encoding="utf-8"),
+        [
+            "/api/music-pet/recommendation",
+            "/api/music-pet/state",
+            "/api/music-pet/equip",
+            "/api/music-pet/listening-events",
+            "createMusicPetRecommendation",
+            "sendJson",
+            "userProfile",
+        ],
+    )
+    assert_contains(
+        "sqlite",
+        (ROOT / "server" / "sqlite_bridge.py").read_text(encoding="utf-8"),
+        [
+            "CREATE TABLE IF NOT EXISTS users",
+            "CREATE TABLE IF NOT EXISTS songs",
+            "CREATE TABLE IF NOT EXISTS song_features",
+            "CREATE TABLE IF NOT EXISTS listening_events",
+            "CREATE TABLE IF NOT EXISTS recommendation_records",
         ],
     )
     print("smoke ok")
